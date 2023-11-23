@@ -3,11 +3,10 @@
 :license: GNU GENERAL PUBLIC LICENSE Version 3
 :copyright (c) 2023 Oleg Smoliakov
 """
+import re
+from subprocess import run, PIPE, Popen
 
-__author__ = "Oleg Smoliakov"
-__version__ = "0.0.1"
-
-
+# import config file constants and classes
 from .config import Key
 from .config import (
     MOUSE_MOVE_SPEED,
@@ -25,7 +24,13 @@ from .config import (
     OSX,
     WIN,
     UNIX,
+    SOUND_CAPTURE_PATH,
+    SOUND_FINISH_PATH,
 )
+
+# import optional helpfull utils for user
+from ._utils import _getLocation as getLocation
+from ._utils import _getRegion
 
 
 from ._main import region
@@ -47,6 +52,7 @@ from ._main import _mouseMove as mouseMove
 from ._main import _mouseMoveRelative as mouseMoveRealive
 from ._main import _dragDrop as dragDrop
 
+
 # import Screenshot-related functions
 from ._main import _exist as exist
 from ._main import _find as find
@@ -65,3 +71,19 @@ from ._main import _unminimazeWindow as unminimazeWindow
 # importing the file management function
 from ._main import _saveScreenshot as saveScreenshot
 from ._main import _deleteFile as deleteFile
+
+
+__author__ = "Oleg Smoliakov"
+__version__ = "0.0.2"
+
+REQUIRED_PKGS_LINUX = ["libgirepository1.0-dev", "libcairo2-dev", "xinput"]
+
+
+def getRegion(interval=0.5):
+    return _getRegion(2, interval)
+
+
+if UNIX:
+    from ._unix import _apt_pkgs_installation_check
+
+    _apt_pkgs_installation_check(REQUIRED_PKGS_LINUX)

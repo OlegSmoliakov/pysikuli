@@ -2,6 +2,8 @@
 
 import pyautogui as ag
 import platform
+import os
+
 from PyHotKey import Key
 
 # TODO: Sleep value should vary with the platform. http://stackoverflow.com/q/1133857
@@ -54,6 +56,12 @@ ag.PAUSE = PAUSE_BETWEEN_ACTION
 MOUSE_LEFT = "left"
 MOUSE_MIDDLE = "middle"
 MOUSE_RIGHT = "right"
+
+
+# Constants for tools module
+SOUND_CAPTURE_PATH = os.path.join(os.path.dirname(__file__), "tools_data/_capture.mp3")
+SOUND_FINISH_PATH = os.path.join(os.path.dirname(__file__), "tools_data/_finish.mp3")
+
 
 OSX, WIN, UNIX = 0, 0, 0
 

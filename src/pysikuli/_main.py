@@ -11,6 +11,7 @@ import cv2
 import sys
 import re
 import os
+import tkinter as tk
 
 from send2trash import send2trash
 from PyHotKey import keyboard_manager as manager
@@ -211,15 +212,34 @@ class region(object):
 
 
 class match(object):
+    # q, space, esc, delete, backspace
+    exit_keys_cv2 = [113, 27, 32, 8, 255]
+
     def __init__(
-        self, up_left_loc: tuple, target_loc: tuple, score: float, precision: float
-    ) -> None:
+        self,
+        up_left_loc: tuple,
+        target_loc: tuple,
+        score: float,
+        precision: float,
+        image_screenshot,
+        region_screenshot,
+    ):
         self.up_left_loc = up_left_loc
         self.target_loc = target_loc
         self.target_x = target_loc[0]
         self.target_y = target_loc[1]
-        self.score = score
+        self.score = round(score, 6)
         self.precision = precision
+        self.image_screenshot = image_screenshot
+        self.region_screenshot = region_screenshot
+
+    def __repr__(self):
+        args = [
+            "target_location={!r}".format(self.target_loc),
+            "score={!r}".format(self.score),
+            "precision={!r}".format(self.precision),
+        ]
+        return "{}({})".format(type(self).__name__, ", ".join(args))
 
     def getScore(self):
         return self.score
@@ -229,6 +249,21 @@ class match(object):
 
     def getTarget(self):
         return self.target_loc
+
+    def showImage(self):
+        cv2.imshow("Pattern", self.image_screenshot)
+
+        while True:
+            # Check if the window is closed
+            if cv2.getWindowProperty("Pattern", cv2.WND_PROP_VISIBLE) < 1:
+                break
+
+            # Wait for a key event
+            key = cv2.waitKey(1)
+            if key != -1 and key in self.keys:
+                break
+
+        cv2.destroyAllWindows()  # destroy all windows
 
     def setTargetOffset(self, x, y):
         self.target_x += x
@@ -275,7 +310,7 @@ def _wait(
 
 @_failSafeCheck
 def _click(
-    loc_or_pic,
+    loc_or_pic=None,
     region=None,
     max_search_time=DEFAULT_MAX_SEARCH_TIME,
     time_step=DEFAULT_TIME_STEP,
@@ -318,11 +353,11 @@ def _get_coordinates(
     precision=DEFAULT_PRECISION,
     pixel_colors=None,
 ):
-    _type = type(loc_or_pic)
-
-    if _type == list or _type == tuple:
+    if isinstance(loc_or_pic, (list, tuple)):
         return loc_or_pic
-    elif _type == str:
+    elif loc_or_pic is None:
+        return None, None
+    elif isinstance(loc_or_pic, str):
         _match = _find(
             loc_or_pic,
             region,
@@ -376,7 +411,9 @@ def _findAny(image_list, region=None, grascale=True, precision=DEFAULT_PRECISION
     matches = []
     for image in image_list:
         matches.append(
-            _exist(image, region, grascale, precision=precision, nd_region=tmp_region)
+            _exist(
+                image, region, grascale, precision=precision, numpy_region=tmp_region
+            )
         )
     return [x for x in matches if x is not None]
 
@@ -386,10 +423,10 @@ def _exist(
     region=None,
     grayscale=True,
     precision=DEFAULT_PRECISION,
-    nd_region: np.ndarray = None,
+    numpy_region: np.ndarray = None,
 ):
-    # TODO: create discription
-    # find out simple way to debug from main or other scripts
+    # TODO: create full discription
+    # TODO: find out simple way to debug from main or other scripts
     """
     Searchs for an image within an area or on the screen
 
@@ -398,14 +435,14 @@ def _exist(
     image : path to the image file (see opencv imread for supported types)
     region : (x1, y1, x2, y2)
     precision : the higher, the lesser tolerant and fewer false positives are found default is 0.8
-    nd_region : a PIL image, usefull if you intend to search the same unchanging region for several elements, must be stored in ``RGB format``
+    numpy_region : a PIL or numpy image, usefull if you intend to search the same unchanging region for several elements, must be stored in ``RGB format``
 
     returns :
     the top left corner coordinates of the element if found as an array [x,y] or [-1,-1] if not
     """
 
-    if isinstance(nd_region, np.ndarray):
-        tmp_region = nd_region
+    if isinstance(numpy_region, np.ndarray):
+        tmp_region = numpy_region
     else:
         if not region:
             tmp_region = sct.grab(sct.monitors[0])
@@ -416,17 +453,21 @@ def _exist(
     if grayscale:
         tmp_image = cv2.imread(image, cv2.IMREAD_GRAYSCALE)
         tmp_region = cv2.cvtColor(tmp_region, cv2.COLOR_RGB2GRAY)
+
+        image_screenshot = tmp_image
+        region_screenshot = tmp_region
     else:
         # RGB = tmp_region[1770][1223], maybe store it for pixel comparing
+        tmp_image = cv2.imread(image, cv2.IMREAD_COLOR)
 
+        image_screenshot = tmp_image
+        region_screenshot = tmp_region
         # both images must be stored in BGR format for futher matchTemplate
-        tmp_image = cv2.imread(
-            image, cv2.IMREAD_COLOR
-        )  # imread must create always BGR images, but in my case it is RGB
         tmp_image = cv2.cvtColor(tmp_image, cv2.COLOR_RGB2BGR)
-        tmp_region = cv2.cvtColor(
-            tmp_region, cv2.COLOR_RGB2BGR
-        )  # sct.grab create always RGB images
+        tmp_region = cv2.cvtColor(tmp_region, cv2.COLOR_RGB2BGR)
+
+        # imread from tmp_image must create always BGR images, but in my case it is RGB
+        # sct.grab from tmp_region create always RGB images
 
     if tmp_image is None:
         raise FileNotFoundError(f"Image file not found: {image}")
@@ -463,8 +504,6 @@ def _exist(
 
     if region:
         max_loc = (region[0] + max_loc[0], region[1] + max_loc[1])
-    else:
-        region = MONITOR_REGION
 
     x = round(max_loc[0] + width / 2)
     y = round(max_loc[1] + height / 2)
@@ -474,7 +513,9 @@ def _exist(
 
     if max_val < precision:
         return None
-    return match(max_loc, max_loc_center, max_val, precision)
+    return match(
+        max_loc, max_loc_center, max_val, precision, image_screenshot, region_screenshot
+    )
 
 
 def _getPixel(x, y):

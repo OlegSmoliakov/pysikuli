@@ -15,6 +15,9 @@ import os
 # sik.tap(ownKey.left)
 
 
+# TODO: unittest sound
+
+
 class TestGeneral(unittest.TestCase):
     def setUp(self):
         self.oldFailsafeSetting = sik.FAILSAFE
@@ -68,6 +71,10 @@ class TestGeneral(unittest.TestCase):
         sik.checkRegion
         sik.wait
         sik.sleep
+
+        # tools-related API
+        sik.getLocation
+        sik.getRegion
 
 
 if __name__ == "__main__":
