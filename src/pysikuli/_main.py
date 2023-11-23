@@ -250,20 +250,27 @@ class match(object):
     def getTarget(self):
         return self.target_loc
 
-    def showImage(self):
-        cv2.imshow("Pattern", self.image_screenshot)
+    def _showImageCV2(self, window_name, img):
+        cv2.namedWindow(window_name, cv2.WINDOW_NORMAL)
+        cv2.imshow(window_name, img)
 
         while True:
             # Check if the window is closed
-            if cv2.getWindowProperty("Pattern", cv2.WND_PROP_VISIBLE) < 1:
+            if cv2.getWindowProperty(window_name, cv2.WND_PROP_VISIBLE) < 1:
                 break
 
             # Wait for a key event
             key = cv2.waitKey(1)
-            if key != -1 and key in self.keys:
+            if key != -1 and key in self.exit_keys_cv2:
                 break
 
-        cv2.destroyAllWindows()  # destroy all windows
+        cv2.destroyAllWindows()
+
+    def showRegion(self):
+        self._showImageCV2("Region", self.region_screenshot)
+
+    def showImage(self):
+        self._showImageCV2("Pattern", self.image_screenshot)
 
     def setTargetOffset(self, x, y):
         self.target_x += x
