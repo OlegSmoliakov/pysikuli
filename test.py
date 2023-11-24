@@ -1,20 +1,14 @@
 import unittest
 import os
+import numpy as np
 
 import src.pysikuli as sik
-
-# scriptFolder = os.path.dirname(os.path.realpath(__file__))
-# os.chdir(scriptFolder)
-
-
-# modify Key class test
-# sik.Key.test = sik.Key.space
-
-# class ownKey(sik.Key):
-#     test2 = sik.Key.left
-
-# sik.tap(ownKey.left)
-
+import src.pysikuli._main as main
+from src.pysikuli.config import (
+    OSX,
+    WIN,
+    UNIX,
+)
 
 # TODO: unittest sound
 
@@ -94,7 +88,7 @@ class TestGeneral(unittest.TestCase):
         sik.find
         sik.findAny
         sik.getPixel
-        sik.checkRegion
+        sik.regionValidate
         sik.wait
         sik.sleep
 
@@ -102,9 +96,128 @@ class TestGeneral(unittest.TestCase):
         sik.getLocation
         sik.getRegion
 
-    def test_imShow(self):
+    def test_regionValidate(self):
+        regionValidateSize = main._regionValidate
+
+        self.assertIsNone(regionValidateSize(0, 0, 2, 2))
+        self.assertIsNone(regionValidateSize(*(50, 30, 60, 100)))
+        self.assertIsNone(regionValidateSize(*[100, 150, 120, 300]))
+
+        # incorrect values test
+        with self.assertRaises(TypeError):
+            regionValidateSize(1, 3, 2, 2)
+            regionValidateSize(3, 1, 2, 2)
+            regionValidateSize(1, 1, 2, 2.0)
+
+            # outside the screen test
+            regionValidateSize(-1, 1, 2, 2)
+            regionValidateSize(1, 3000, -2, 2)
+            regionValidateSize(1, 1, 2, 2000)
+
+    def test_regionToNumpyArray_tuple_1(self):
+        regionToNumpyArray = main._regionToNumpyArray
+
+        np_reg, tuple_reg = regionToNumpyArray(self.test_reg.reg)
+        original_shape = (
+            self.test_reg.reg[3] - self.test_reg.reg[1],
+            self.test_reg.reg[2] - self.test_reg.reg[0],
+        )
+        returned_shape = (np_reg.shape[1], np_reg.shape[0])
+        self.assertIsInstance(np_reg, np.ndarray)
+        self.assertTupleEqual(original_shape, returned_shape)
+        self.assertTupleEqual(tuple_reg, self.test_reg.reg)
+
+    def test_regionToNumpyArray_tuple_2(self):
+        regionToNumpyArray = main._regionToNumpyArray
+
+        np_reg, tuple_reg = regionToNumpyArray(list(self.test_reg.reg))
+        original_shape = (
+            self.test_reg.reg[3] - self.test_reg.reg[1],
+            self.test_reg.reg[2] - self.test_reg.reg[0],
+        )
+        returned_shape = (np_reg.shape[1], np_reg.shape[0])
+        self.assertIsInstance(np_reg, np.ndarray)
+        self.assertTupleEqual(original_shape, returned_shape)
+        self.assertTupleEqual(tuple_reg, self.test_reg.reg)
+
+    def test_regionToNumpyArray_tuple_3(self):
+        regionToNumpyArray = main._regionToNumpyArray
+
+        with self.assertRaises(TypeError):
+            regionToNumpyArray([0, 4, 4, 2])
+            regionToNumpyArray((0, 4, 4, 2))
+            regionToNumpyArray((0, 1, 4))
+
+    def test_regionToNumpyArray_ScreenShot_1(self):
+        regionToNumpyArray = main._regionToNumpyArray
+        screenshot = main.sct.grab(self.test_reg.reg)
+        original_shape = (
+            screenshot.width,
+            screenshot.height,
+        )
+
+        np_reg, tuple_reg = regionToNumpyArray(screenshot)
+        returned_shape = (np_reg.shape[1], np_reg.shape[0])
+
+        self.assertIsInstance(np_reg, np.ndarray)
+        self.assertTupleEqual(original_shape, returned_shape)
+        self.assertTupleEqual(tuple_reg, self.test_reg.reg)
+
+    def test_regionToNumpyArray_ScreenShot_2(self):
+        regionToNumpyArray = main._regionToNumpyArray
+
+        with self.assertRaises(TypeError):
+            screenshot = main.sct.grab((0, 1, 2))
+            regionToNumpyArray(screenshot)
+
+            screenshot = main.sct.grab((0, 1, 2, 3000))
+            regionToNumpyArray(screenshot)
+
+            screenshot = main.sct.grab((0, 1, 2))
+            regionToNumpyArray(screenshot)
+
+    def test_exist(self):
+        exist = main._exist
+
+        with self.assertRaises(TypeError):
+            exist(image=None)
+            exist(image=1)
+            exist(image=[1, 2])
+            exist(image=(1, 2))
+
+        self.assertIsInstance(exist(image=np.array(self.test_img)), main.match)
+
+        exist(
+            image=self.test_img,
+            region=self.test_reg,
+            grayscale=True,
+            precision=0.8,
+        )
+
+    def test_exist_compression_ratio(self):
+        # TODO: test all variants with compression
+        pass
+
+    def test_imgDownsize(self):
+        # TODO:
+        pass
+
+    def test_showImage(self):
+        sik.keyDown(sik.Key.esc)
         self.test_match.showImage()
+        sik.keyUp(sik.Key.esc)
+
+    def test_showRegion(self):
+        sik.keyDown(sik.Key.esc)
+        ans = self.test_match.showRegion()
+        self.assertIsNone(ans)
+        sik.keyUp(sik.Key.esc)
+
+    @unittest.skipUnless(UNIX, "linux specific")
+    def test_linux(self):
+        # TODO:
+        pass
 
 
 if __name__ == "__main__":
-    unittest.main()
+    unittest.main(verbosity=2)

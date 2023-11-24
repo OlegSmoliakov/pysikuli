@@ -97,14 +97,15 @@ class region(object):
     COMPRESSION_RATIO = COMPRESSION_RATIO
 
     def __init__(self, x1: int, y1: int, x2: int, y2: int):
-        _checkRegion(x1, y1, x2, y2)
+        _regionValidate(x1, y1, x2, y2)
         self.reg = (x1, y1, x2, y2)
+        self.x1, self.y1, self.x2, self.y2 = x1, y1, x2, y2
 
     def has(
         self,
         image: str,
         max_search_time=DEFAULT_MAX_SEARCH_TIME,
-        grayscale=True,
+        grayscale=DEFAULT_GRAYSCALE,
         precision=DEFAULT_PRECISION,
         pixel_colors: tuple = None,
     ):
@@ -135,7 +136,7 @@ class region(object):
         self,
         image: str,
         max_search_time=DEFAULT_MAX_SEARCH_TIME,
-        grayscale=True,
+        grayscale=DEFAULT_GRAYSCALE,
         precision=DEFAULT_PRECISION,
         pixel_colors=None,
     ) -> bool | None:
@@ -154,7 +155,7 @@ class region(object):
         # search variables
         loc_or_pic,
         max_search_time=DEFAULT_MAX_SEARCH_TIME,
-        grayscale=True,
+        grayscale=DEFAULT_GRAYSCALE,
         precision=DEFAULT_PRECISION,
         # click variables
         clicks=1,
@@ -177,7 +178,7 @@ class region(object):
         self,
         loc_or_pic,
         max_search_time=DEFAULT_MAX_SEARCH_TIME,
-        grayscale=True,
+        grayscale=DEFAULT_GRAYSCALE,
         precision=DEFAULT_PRECISION,
         clicks=1,
         interval=0.0,
@@ -197,17 +198,17 @@ class region(object):
         self,
         image,
         max_search_time=DEFAULT_MAX_SEARCH_TIME,
-        grayscale=True,
+        grayscale=DEFAULT_GRAYSCALE,
         precision=DEFAULT_PRECISION,
     ):
         return _find(
             image, self.reg, max_search_time, self.TIME_STEP, grayscale, precision
         )
 
-    def findAny(self, image, grayscale=True, precision=DEFAULT_PRECISION):
+    def findAny(self, image, grayscale=DEFAULT_GRAYSCALE, precision=DEFAULT_PRECISION):
         return _findAny(image, self.reg, grayscale, precision=precision)
 
-    def exist(self, image, grayscale=True, precision=DEFAULT_PRECISION):
+    def exist(self, image, grayscale=DEFAULT_GRAYSCALE, precision=DEFAULT_PRECISION):
         return _exist(image, self.reg, grayscale, precision)
 
 
@@ -279,29 +280,12 @@ class match(object):
         return self.target_loc
 
 
-def _checkRegion(x1, y1, x2, y2):
-    if not (x1 < x2 and y1 < y2):
-        raise TypeError("Entered region is incorrect")
-
-
-def _imgDownsize(img, multiplier):
-    """
-    multiplier must be even [2-8]
-    a small boost if the multiplier is greater than 4
-    """
-    width = int(img.shape[1] / multiplier)
-    height = int(img.shape[0] / multiplier)
-    dim = (width, height)
-
-    return cv2.resize(img, dim, interpolation=cv2.INTER_AREA)
-
-
 def _wait(
     image: str,
     region=None,
     max_search_time=DEFAULT_MAX_SEARCH_TIME,
     time_step=DEFAULT_TIME_STEP,
-    grayscale=True,
+    grayscale=DEFAULT_GRAYSCALE,
     precision=DEFAULT_PRECISION,
     pixel_colors=None,
 ) -> bool | None:
@@ -321,7 +305,7 @@ def _click(
     region=None,
     max_search_time=DEFAULT_MAX_SEARCH_TIME,
     time_step=DEFAULT_TIME_STEP,
-    grayscale=True,
+    grayscale=DEFAULT_GRAYSCALE,
     precision=0.9,
     # click variables
     clicks=1,
@@ -356,7 +340,7 @@ def _get_coordinates(
     region=None,
     max_search_time=DEFAULT_MAX_SEARCH_TIME,
     time_step=DEFAULT_TIME_STEP,
-    grayscale=True,
+    grayscale=DEFAULT_GRAYSCALE,
     precision=DEFAULT_PRECISION,
     pixel_colors=None,
 ):
@@ -408,30 +392,92 @@ def _find(
     return None
 
 
-def _findAny(image_list, region=None, grascale=True, precision=DEFAULT_PRECISION):
-    if not region:
-        tmp_region = sct.grab(sct.monitors[0])
-    else:
-        tmp_region = sct.grab(region)
-    tmp_region = np.array(tmp_region)
-
+def _findAny(
+    image_list, region=None, grayscale=DEFAULT_GRAYSCALE, precision=DEFAULT_PRECISION
+):
+    np_region = _regionToNumpyArray(region)
     matches = []
+
     for image in image_list:
-        matches.append(
-            _exist(
-                image, region, grascale, precision=precision, numpy_region=tmp_region
-            )
-        )
+        matches.append(_exist(image, np_region, grayscale, precision=precision))
     return [x for x in matches if x is not None]
+
+
+def _imgDownsize(img: np.ndarray, multiplier):
+    """
+    multiplier must be even [2-8]
+    does not make sense with a multiplier greater than 4 because of the small increase in speed.
+    """
+    width = int(img.shape[1] / multiplier)
+    height = int(img.shape[0] / multiplier)
+    dim = (width, height)
+
+    return cv2.resize(img, dim, interpolation=cv2.INTER_AREA)
+
+
+def _regionValidate(x1: int, y1: int, x2: int, y2: int):
+    if (
+        x1 < MONITOR_REGION[0]
+        or y1 < MONITOR_REGION[1]
+        or x2 < MONITOR_REGION[0]
+        or y2 < MONITOR_REGION[1]
+        or x1 > MONITOR_REGION[2]
+        or y1 > MONITOR_REGION[3]
+        or x2 > MONITOR_REGION[2]
+        or y2 > MONITOR_REGION[3]
+    ):
+        raise TypeError(f"Region outside the screen: {(x1, y1, x2, y2)}")
+    if not (x1 < x2 and y1 < y2):
+        raise TypeError(f"Entered region is incorrect: {(x1, y1, x2, y2)}")
+
+
+def _regionToNumpyArray(reg):
+    # TODO: implement Screenshot validation
+    if isinstance(reg, sct.cls_image):
+        tuple_region = (
+            reg.left,
+            reg.top,
+            reg.left + reg.width,
+            reg.top + reg.height,
+        )
+        return np.array(reg), tuple_region
+    elif isinstance(reg, region):
+        tuple_region = reg.reg
+        grab_reg = sct.grab(tuple_region)
+    elif reg is None:
+        grab_reg = sct.grab(sct.monitors[0])
+        tuple_region = None
+    elif isinstance(reg, (tuple, list)) and not _regionValidate(*reg):
+        grab_reg = sct.grab(tuple(reg))
+        tuple_region = tuple(reg)
+    else:
+        raise TypeError(
+            f"Entered region's type is incorrect: {reg.__class__.__name__}"
+            "\nPossible type is numpy.ndarray, mss.ScreenShot, tuple, list"
+        )
+    return np.array(grab_reg), tuple_region
+
+
+def _imageToNumpyArray(image):
+    if isinstance(image, np.ndarray):
+        return image
+    elif isinstance(image, sct.cls_image):
+        return np.array(image)
+    elif isinstance(image, str) and os.path.isfile(image):
+        return cv2.imread(image, cv2.IMREAD_COLOR)
+    else:
+        raise TypeError(
+            f"Can't use {image.__class__.__name__} please use: image_path, ndarray or ScreenShot types"
+        )
 
 
 def _exist(
     image,
     region=None,
-    grayscale=True,
+    grayscale=DEFAULT_GRAYSCALE,
     precision=DEFAULT_PRECISION,
-    numpy_region: np.ndarray = None,
 ):
+    # TODO: region also must be saved in (x1,y1,x2,y2)
     # TODO: create full discription
     # TODO: find out simple way to debug from main or other scripts
     """
@@ -448,59 +494,45 @@ def _exist(
     the top left corner coordinates of the element if found as an array [x,y] or [-1,-1] if not
     """
 
-    if isinstance(numpy_region, np.ndarray):
-        tmp_region = numpy_region
-    else:
-        if not region:
-            tmp_region = sct.grab(sct.monitors[0])
-        else:
-            tmp_region = sct.grab(region)
-        tmp_region = np.array(tmp_region)
+    np_region, tuple_region = _regionToNumpyArray(region)
+    np_image = _imageToNumpyArray(image)
 
-    if grayscale:
-        tmp_image = cv2.imread(image, cv2.IMREAD_GRAYSCALE)
-        tmp_region = cv2.cvtColor(tmp_region, cv2.COLOR_RGB2GRAY)
-
-        image_screenshot = tmp_image
-        region_screenshot = tmp_region
-    else:
-        # RGB = tmp_region[1770][1223], maybe store it for pixel comparing
-        tmp_image = cv2.imread(image, cv2.IMREAD_COLOR)
-
-        image_screenshot = tmp_image
-        region_screenshot = tmp_region
-        # both images must be stored in BGR format for futher matchTemplate
-        tmp_image = cv2.cvtColor(tmp_image, cv2.COLOR_RGB2BGR)
-        tmp_region = cv2.cvtColor(tmp_region, cv2.COLOR_RGB2BGR)
-
-        # imread from tmp_image must create always BGR images, but in my case it is RGB
-        # sct.grab from tmp_region create always RGB images
-
-    if tmp_image is None:
-        raise FileNotFoundError(f"Image file not found: {image}")
-
-    height = tmp_image.shape[0]
-    width = tmp_image.shape[1]
-    height_reg = tmp_region.shape[0]
-    width_reg = tmp_region.shape[1]
+    height = np_image.shape[0]
+    width = np_image.shape[1]
+    height_reg = np_region.shape[0]
+    width_reg = np_region.shape[1]
 
     if height > height_reg or width > width_reg:
-        raise InterruptedError(
-            f"The region is smaller than the image you are looking for: {image}"
+        raise ValueError(
+            f"The region ({np_region.shape}) is smaller than the image ({np_image.shape}) you are looking for"
         )
 
+    if grayscale:
+        np_image = cv2.cvtColor(np_image, cv2.COLOR_BGR2GRAY)
+        np_region = cv2.cvtColor(np_region, cv2.COLOR_RGB2GRAY)
+
+        image_screenshot = np_image
+        region_screenshot = np_region
+    else:
+        # RGB = np_region[1770][1223], maybe store it for pixel comparing
+        image_screenshot = np_image
+        region_screenshot = np_region
+        # both images must be stored in BGR format for futher matchTemplate
+        np_image = cv2.cvtColor(np_image, cv2.COLOR_RGB2BGR)
+        np_region = cv2.cvtColor(np_region, cv2.COLOR_RGB2BGR)
+
+        # imread from np_image must create always BGR images, but in my case it is RGB
+        # sct.grab from np_region create always RGB images
+
     if COMPRESSION_RATIO > 1:
-        tmp_image = _imgDownsize(tmp_image, COMPRESSION_RATIO)
-        tmp_region = _imgDownsize(tmp_region, COMPRESSION_RATIO)
+        np_image = _imgDownsize(np_image, COMPRESSION_RATIO)
+        np_region = _imgDownsize(np_region, COMPRESSION_RATIO)
     elif COMPRESSION_RATIO < 1:
-        raise InterruptedError(
-            f"Couldn't recognize COMPRESSION_RATIO: {COMPRESSION_RATIO}"
-        )
+        raise ValueError(f"Couldn't recognize COMPRESSION_RATIO: {COMPRESSION_RATIO}")
 
     # also can use cv2.TM_CCOEFF, TM_CCORR_NORMED and TM_CCOEFF_NORMED in descending order of speed
     # for TM_CCORR_NORMED, minimum precision is 0.991
-    result = cv2.matchTemplate(tmp_region, tmp_image, cv2.TM_CCOEFF_NORMED)
-
+    result = cv2.matchTemplate(np_region, np_image, cv2.TM_CCOEFF_NORMED)
     min_val, max_val, min_loc, max_loc = cv2.minMaxLoc(result)
 
     if COMPRESSION_RATIO > 1:
@@ -509,8 +541,8 @@ def _exist(
             max_loc[1] * COMPRESSION_RATIO + 1,
         )
 
-    if region:
-        max_loc = (region[0] + max_loc[0], region[1] + max_loc[1])
+    if tuple_region:
+        max_loc = (tuple_region[0] + max_loc[0], tuple_region[1] + max_loc[1])
 
     x = round(max_loc[0] + width / 2)
     y = round(max_loc[1] + height / 2)
@@ -648,7 +680,7 @@ def _rightClick(
     region=None,
     max_search_time=DEFAULT_MAX_SEARCH_TIME,
     time_step=DEFAULT_TIME_STEP,
-    grayscale=True,
+    grayscale=DEFAULT_GRAYSCALE,
     precision=DEFAULT_PRECISION,
     clicks=1,
     interval=0.0,
@@ -700,6 +732,8 @@ def _saveImg(image):
 
     output = f"image_{time.strftime('%H_%M_%S')}.png"
     cv2.imwrite(output, image)
+    path = os.path.join(os.getcwd(), output)
+    print(f"Image {path} successfully saved")
 
 
 def _saveScreenshot(region=None):
@@ -709,8 +743,8 @@ def _saveScreenshot(region=None):
     else:
         screenshot = sct.grab(region)
     mss.tools.to_png(screenshot.rgb, screenshot.size, output=output)
-
-    print("Pic saved")
+    path = os.path.join(os.getcwd(), output)
+    print(f"Image {path} successfully saved")
 
 
 def _imagesearchCount(image, precision=0.95):

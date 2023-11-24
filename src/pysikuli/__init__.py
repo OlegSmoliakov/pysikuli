@@ -58,7 +58,7 @@ from ._main import _exist as exist
 from ._main import _find as find
 from ._main import _findAny as findAny
 from ._main import _getPixel as getPixel
-from ._main import _checkRegion as checkRegion
+from ._main import _regionValidate as regionValidate
 from ._main import _wait as wait
 from ._main import _sleep as sleep
 
