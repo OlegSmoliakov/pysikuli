@@ -5,14 +5,14 @@ import subprocess
 import functools
 import logging
 import time
-import mss
-import mss.tools
 import cv2
 import sys
 import re
 import os
 import tkinter as tk
 
+from mss import mss, tools
+from mss.screenshot import ScreenShot
 from send2trash import send2trash
 from PyHotKey import keyboard_manager as manager
 from .config import (
@@ -51,9 +51,9 @@ class FailSafeException(pysikuliException):
     """
 
 
-sct = mss.mss()  # is an alias for mss.mss()
+sct = mss()  # is an alias for mss()
 MONITOR_RESOLUTION = sct.grab(sct.monitors[0]).size
-MONITOR_REGION = (0, 0, MONITOR_RESOLUTION[0] - 1, MONITOR_RESOLUTION[1] - 1)
+MONITOR_REGION = (0, 0, MONITOR_RESOLUTION[0], MONITOR_RESOLUTION[1])
 
 
 def _mouseFailSafeCheck():
@@ -97,8 +97,8 @@ class region(object):
     COMPRESSION_RATIO = COMPRESSION_RATIO
 
     def __init__(self, x1: int, y1: int, x2: int, y2: int):
-        _regionValidate(x1, y1, x2, y2)
         self.reg = (x1, y1, x2, y2)
+        _regionValidate(self.reg)
         self.x1, self.y1, self.x2, self.y2 = x1, y1, x2, y2
 
     def has(
@@ -415,7 +415,11 @@ def _imgDownsize(img: np.ndarray, multiplier):
     return cv2.resize(img, dim, interpolation=cv2.INTER_AREA)
 
 
-def _regionValidate(x1: int, y1: int, x2: int, y2: int):
+# def _screenshotValidate(screenshot: ScreenShot):
+
+
+def _regionValidate(reg: (tuple, list)):
+    x1, y1, x2, y2 = reg
     if (
         x1 < MONITOR_REGION[0]
         or y1 < MONITOR_REGION[1]
@@ -431,29 +435,46 @@ def _regionValidate(x1: int, y1: int, x2: int, y2: int):
         raise TypeError(f"Entered region is incorrect: {(x1, y1, x2, y2)}")
 
 
-def _regionToNumpyArray(reg):
-    # TODO: implement Screenshot validation
-    if isinstance(reg, sct.cls_image):
-        tuple_region = (
+def _regionNormalization(reg):
+    if isinstance(reg, ScreenShot):
+        reg = (
             reg.left,
             reg.top,
             reg.left + reg.width,
             reg.top + reg.height,
         )
-        return np.array(reg), tuple_region
+        # maybe remove this
+        _regionValidate(reg)
     elif isinstance(reg, region):
-        tuple_region = reg.reg
+        reg = reg.reg
+    elif isinstance(reg, (list, tuple)) and not _regionValidate(reg):
+        reg = tuple(reg)
+        pass
+    elif reg is None:
+        return None
+    else:
+        raise TypeError(
+            f"Entered region's type is incorrect: {reg.__class__.__name__}"
+            "\nSupported types: ScreenShot, region, None, tuple or list"
+        )
+    return reg
+
+
+def _regionToNumpyArray(reg):
+    tuple_region = _regionNormalization(reg)
+    if isinstance(reg, ScreenShot):
+        grab_reg = reg
+    elif isinstance(reg, region):
         grab_reg = sct.grab(tuple_region)
     elif reg is None:
         grab_reg = sct.grab(sct.monitors[0])
         tuple_region = None
-    elif isinstance(reg, (tuple, list)) and not _regionValidate(*reg):
-        grab_reg = sct.grab(tuple(reg))
-        tuple_region = tuple(reg)
+    elif isinstance(reg, (tuple, list)):
+        grab_reg = sct.grab(tuple_region)
     else:
         raise TypeError(
             f"Entered region's type is incorrect: {reg.__class__.__name__}"
-            "\nPossible type is numpy.ndarray, mss.ScreenShot, tuple, list"
+            "\nSupported types: ScreenShot, region, None, tuple or list"
         )
     return np.array(grab_reg), tuple_region
 
@@ -461,13 +482,13 @@ def _regionToNumpyArray(reg):
 def _imageToNumpyArray(image):
     if isinstance(image, np.ndarray):
         return image
-    elif isinstance(image, sct.cls_image):
+    elif isinstance(image, ScreenShot):
         return np.array(image)
     elif isinstance(image, str) and os.path.isfile(image):
         return cv2.imread(image, cv2.IMREAD_COLOR)
     else:
         raise TypeError(
-            f"Can't use {image.__class__.__name__} please use: image_path, ndarray or ScreenShot types"
+            f"Can't use '{image.__class__.__name__}' with '{image}' value, supported types: image_path, ndarray or ScreenShot types"
         )
 
 
@@ -737,14 +758,16 @@ def _saveImg(image):
 
 
 def _saveScreenshot(region=None):
+    region = _regionNormalization(region)
     output = f"Screenshot_{time.strftime('%H_%M_%S')}.png"
     if not region:
-        screenshot = sct.grab(sct.monitors[0])
+        sct.shot(output=output)
     else:
-        screenshot = sct.grab(region)
-    mss.tools.to_png(screenshot.rgb, screenshot.size, output=output)
+        screenshot = sct.grab(tuple(region))
+        tools.to_png(screenshot.rgb, screenshot.size, output=output)
     path = os.path.join(os.getcwd(), output)
-    print(f"Image {path} successfully saved")
+    print(f"Image '{path}' successfully saved")
+    return path
 
 
 def _imagesearchCount(image, precision=0.95):

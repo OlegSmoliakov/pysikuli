@@ -1,5 +1,6 @@
 import unittest
 import os
+import time
 import numpy as np
 
 import src.pysikuli as sik
@@ -99,9 +100,9 @@ class TestGeneral(unittest.TestCase):
     def test_regionValidate(self):
         regionValidateSize = main._regionValidate
 
-        self.assertIsNone(regionValidateSize(0, 0, 2, 2))
-        self.assertIsNone(regionValidateSize(*(50, 30, 60, 100)))
-        self.assertIsNone(regionValidateSize(*[100, 150, 120, 300]))
+        self.assertIsNone(regionValidateSize((0, 0, 2, 2)))
+        self.assertIsNone(regionValidateSize((50, 30, 60, 100)))
+        self.assertIsNone(regionValidateSize([100, 150, 120, 300]))
 
         # incorrect values test
         with self.assertRaises(TypeError):
@@ -165,16 +166,28 @@ class TestGeneral(unittest.TestCase):
 
     def test_regionToNumpyArray_ScreenShot_2(self):
         regionToNumpyArray = main._regionToNumpyArray
+        main.sct.grab
 
         with self.assertRaises(TypeError):
-            screenshot = main.sct.grab((0, 1, 2))
+            screenshot = main.ScreenShot([1, 2, 4, 5], main.sct.monitors[0])
             regionToNumpyArray(screenshot)
 
-            screenshot = main.sct.grab((0, 1, 2, 3000))
-            regionToNumpyArray(screenshot)
+    def test_saveScreenshot(self):
+        print("\n")
+        path = sik.saveScreenshot()
+        self.assertTrue(os.path.isfile(path))
+        os.remove(path)
+        time.sleep(0.1)
 
-            screenshot = main.sct.grab((0, 1, 2))
-            regionToNumpyArray(screenshot)
+        path = sik.saveScreenshot([1, 2, 3, 4])
+        self.assertTrue(os.path.isfile(path))
+        os.remove(path)
+        time.sleep(0.1)
+
+        path = sik.saveScreenshot((1, 2, 3, 4))
+        self.assertTrue(os.path.isfile(path))
+        os.remove(path)
+        time.sleep(0.1)
 
     def test_exist(self):
         exist = main._exist
