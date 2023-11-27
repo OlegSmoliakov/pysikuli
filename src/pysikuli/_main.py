@@ -1,13 +1,11 @@
 import pyperclip as clip
 import pyautogui as ag
 import numpy as np
-import subprocess
 import functools
 import logging
 import time
 import cv2
 import sys
-import re
 import os
 import tkinter as tk
 
@@ -15,27 +13,10 @@ from mss import mss, tools
 from mss.screenshot import ScreenShot
 from send2trash import send2trash
 from PyHotKey import keyboard_manager as manager
-from .config import (
-    MOUSE_MOVE_SPEED,
-    MOUSE_LEFT,
-    MOUSE_MIDDLE,
-    MOUSE_RIGHT,
-    DEFAULT_GRAYSCALE,
-    COMPRESSION_RATIO,
-    DEFAULT_PRECISION,
-    DEFAULT_MAX_SEARCH_TIME,
-    DEFAULT_TIME_STEP,
-    FAILSAFE,
-    FAILSAFE_POINTS,
-    FAILSAFE_HOTKEY,
-    OSX,
-    WIN,
-    UNIX,
-    Key,
-)
+from ._config import Config, Key
 
 
-class pysikuliException(Exception):
+class PysikuliException(Exception):
     """
     pysikuli code will raise this exception class for any invalid actions. If pysikuli raises some other exception,
     you should assume that this is caused by a bug in pysikuli itself. (Including a failure to catch potential
@@ -43,7 +24,7 @@ class pysikuliException(Exception):
     """
 
 
-class FailSafeException(pysikuliException):
+class FailSafeException(PysikuliException):
     """
     This exception is raised by pysikuli functions when the user puts the mouse cursor into one of the "failsafe
     points" (by default, one of the four corners of the primary monitor). This exception shouldn't be caught; it's
@@ -57,56 +38,55 @@ MONITOR_REGION = (0, 0, MONITOR_RESOLUTION[0], MONITOR_RESOLUTION[1])
 
 
 def _mouseFailSafeCheck():
-    if tuple(ag.position()) in FAILSAFE_POINTS:
+    if tuple(ag.position()) in Config.FAILSAFE_POINTS:
         return True
 
 
 def _hotkeyFailSafeCheck():
     pressed = 0
     ans = manager.pressed_keys
-    for key in FAILSAFE_HOTKEY:
+    for key in Config.FAILSAFE_HOTKEY:
         if key in ans:
             pressed += 1
-    if pressed == len(FAILSAFE_HOTKEY):
+    if pressed == len(Config.FAILSAFE_HOTKEY):
         return True
 
 
-def failSafeCheck():
-    if FAILSAFE:
+def _failSafeCheck():
+    if Config.FAILSAFE:
         if _hotkeyFailSafeCheck() or _mouseFailSafeCheck():
             raise FailSafeException(
                 "pysikuli fail-safe triggered from mouse moving to a corner of the screen. To disable this fail-safe, set pysikuli.FAILSAFE to False. DISABLING FAIL-SAFE IS NOT RECOMMENDED."
             )
 
 
-def _failSafeCheck(wrappedFunction):
+def failSafeCheck(wrappedFunction):
     """
     A decorator that calls failSafeCheck() before the decorated function
     """
 
     @functools.wraps(wrappedFunction)
     def failSafeWrapper(*args, **kwargs):
-        failSafeCheck()
+        _failSafeCheck()
         return wrappedFunction(*args, **kwargs)
 
     return failSafeWrapper
 
 
-class region(object):
-    TIME_STEP = DEFAULT_TIME_STEP
-    COMPRESSION_RATIO = COMPRESSION_RATIO
+class Region(object):
+    TIME_STEP = Config.DEFAULT_TIME_STEP
+    COMPRESSION_RATIO = Config.COMPRESSION_RATIO
 
     def __init__(self, x1: int, y1: int, x2: int, y2: int):
-        self.reg = (x1, y1, x2, y2)
-        _regionValidate(self.reg)
+        self.reg = _regionValidation((x1, y1, x2, y2))
         self.x1, self.y1, self.x2, self.y2 = x1, y1, x2, y2
 
     def has(
         self,
         image: str,
-        max_search_time=DEFAULT_MAX_SEARCH_TIME,
-        grayscale=DEFAULT_GRAYSCALE,
-        precision=DEFAULT_PRECISION,
+        max_search_time=Config.DEFAULT_MAX_SEARCH_TIME,
+        grayscale=Config.DEFAULT_GRAYSCALE,
+        precision=Config.DEFAULT_PRECISION,
         pixel_colors: tuple = None,
     ):
         if pixel_colors:
@@ -135,9 +115,9 @@ class region(object):
     def wait(
         self,
         image: str,
-        max_search_time=DEFAULT_MAX_SEARCH_TIME,
-        grayscale=DEFAULT_GRAYSCALE,
-        precision=DEFAULT_PRECISION,
+        max_search_time=Config.DEFAULT_MAX_SEARCH_TIME,
+        grayscale=Config.DEFAULT_GRAYSCALE,
+        precision=Config.DEFAULT_PRECISION,
         pixel_colors=None,
     ) -> bool | None:
         return _wait(
@@ -154,9 +134,9 @@ class region(object):
         self,
         # search variables
         loc_or_pic,
-        max_search_time=DEFAULT_MAX_SEARCH_TIME,
-        grayscale=DEFAULT_GRAYSCALE,
-        precision=DEFAULT_PRECISION,
+        max_search_time=Config.DEFAULT_MAX_SEARCH_TIME,
+        grayscale=Config.DEFAULT_GRAYSCALE,
+        precision=Config.DEFAULT_PRECISION,
         # click variables
         clicks=1,
         interval=0.0,
@@ -177,9 +157,9 @@ class region(object):
     def rightClick(
         self,
         loc_or_pic,
-        max_search_time=DEFAULT_MAX_SEARCH_TIME,
-        grayscale=DEFAULT_GRAYSCALE,
-        precision=DEFAULT_PRECISION,
+        max_search_time=Config.DEFAULT_MAX_SEARCH_TIME,
+        grayscale=Config.DEFAULT_GRAYSCALE,
+        precision=Config.DEFAULT_PRECISION,
         clicks=1,
         interval=0.0,
     ):
@@ -197,22 +177,32 @@ class region(object):
     def find(
         self,
         image,
-        max_search_time=DEFAULT_MAX_SEARCH_TIME,
-        grayscale=DEFAULT_GRAYSCALE,
-        precision=DEFAULT_PRECISION,
+        max_search_time=Config.DEFAULT_MAX_SEARCH_TIME,
+        grayscale=Config.DEFAULT_GRAYSCALE,
+        precision=Config.DEFAULT_PRECISION,
     ):
         return _find(
             image, self.reg, max_search_time, self.TIME_STEP, grayscale, precision
         )
 
-    def findAny(self, image, grayscale=DEFAULT_GRAYSCALE, precision=DEFAULT_PRECISION):
+    def findAny(
+        self,
+        image,
+        grayscale=Config.DEFAULT_GRAYSCALE,
+        precision=Config.DEFAULT_PRECISION,
+    ):
         return _findAny(image, self.reg, grayscale, precision=precision)
 
-    def exist(self, image, grayscale=DEFAULT_GRAYSCALE, precision=DEFAULT_PRECISION):
+    def exist(
+        self,
+        image,
+        grayscale=Config.DEFAULT_GRAYSCALE,
+        precision=Config.DEFAULT_PRECISION,
+    ):
         return _exist(image, self.reg, grayscale, precision)
 
 
-class match(object):
+class Match(object):
     # q, space, esc, delete, backspace
     exit_keys_cv2 = [113, 27, 32, 8, 255]
 
@@ -227,8 +217,11 @@ class match(object):
     ):
         self.up_left_loc = up_left_loc
         self.target_loc = target_loc
+        self.target_offset_loc = target_loc
         self.target_x = target_loc[0]
         self.target_y = target_loc[1]
+        self.target_offset_x = target_loc[0]
+        self.target_offset_y = target_loc[1]
         self.score = round(score, 6)
         self.precision = precision
         self.image_screenshot = image_screenshot
@@ -241,15 +234,6 @@ class match(object):
             "precision={!r}".format(self.precision),
         ]
         return "{}({})".format(type(self).__name__, ", ".join(args))
-
-    def getScore(self):
-        return self.score
-
-    def getPrecision(self):
-        return
-
-    def getTarget(self):
-        return self.target_loc
 
     def _showImageCV2(self, window_name, img):
         cv2.namedWindow(window_name, cv2.WINDOW_NORMAL)
@@ -274,19 +258,19 @@ class match(object):
         self._showImageCV2("Pattern", self.image_screenshot)
 
     def setTargetOffset(self, x, y):
-        self.target_x += x
-        self.target_y += y
-        self.target_loc = (self.target_x, self.target_y)
-        return self.target_loc
+        self.target_offset_x += x
+        self.target_offset_y += y
+        self.target_offset_loc = (self.target_offset_x, self.target_offset_y)
+        return self.target_offset_loc
 
 
 def _wait(
     image: str,
     region=None,
-    max_search_time=DEFAULT_MAX_SEARCH_TIME,
-    time_step=DEFAULT_TIME_STEP,
-    grayscale=DEFAULT_GRAYSCALE,
-    precision=DEFAULT_PRECISION,
+    max_search_time=Config.DEFAULT_MAX_SEARCH_TIME,
+    time_step=Config.DEFAULT_TIME_STEP,
+    grayscale=Config.DEFAULT_GRAYSCALE,
+    precision=Config.DEFAULT_PRECISION,
     pixel_colors=None,
 ) -> bool | None:
     if _find(
@@ -299,13 +283,13 @@ def _wait(
         raise TimeoutError(error_text)
 
 
-@_failSafeCheck
+@failSafeCheck
 def _click(
     loc_or_pic=None,
     region=None,
-    max_search_time=DEFAULT_MAX_SEARCH_TIME,
-    time_step=DEFAULT_TIME_STEP,
-    grayscale=DEFAULT_GRAYSCALE,
+    max_search_time=Config.DEFAULT_MAX_SEARCH_TIME,
+    time_step=Config.DEFAULT_TIME_STEP,
+    grayscale=Config.DEFAULT_GRAYSCALE,
     precision=0.9,
     # click variables
     clicks=1,
@@ -322,29 +306,29 @@ def _click(
     :type time_step: float
     """
 
-    if OSX and interval < 0.02:
+    if Config.OSX and interval < 0.02:
         interval = 0.02
 
-    x, y = _get_coordinates(
+    x, y = _getCoordinates(
         loc_or_pic, region, max_search_time, time_step, grayscale, precision
     )
 
     logging.debug(
-        f"click: {x, y}, clicks: {clicks} interval: {interval} button: {button}, mouse_move_speed: {MOUSE_MOVE_SPEED}"
+        f"click: {x, y}, clicks: {clicks} interval: {interval} button: {button}, mouse_move_speed: {Config.MOUSE_MOVE_SPEED}"
     )
-    ag.click(x, y, clicks, interval, button, MOUSE_MOVE_SPEED)
+    ag.click(x, y, clicks, interval, button, Config.MOUSE_MOVE_SPEED)
 
 
-def _get_coordinates(
+def _getCoordinates(
     loc_or_pic,
     region=None,
-    max_search_time=DEFAULT_MAX_SEARCH_TIME,
-    time_step=DEFAULT_TIME_STEP,
-    grayscale=DEFAULT_GRAYSCALE,
-    precision=DEFAULT_PRECISION,
+    max_search_time=Config.DEFAULT_MAX_SEARCH_TIME,
+    time_step=Config.DEFAULT_TIME_STEP,
+    grayscale=Config.DEFAULT_GRAYSCALE,
+    precision=Config.DEFAULT_PRECISION,
     pixel_colors=None,
 ):
-    if isinstance(loc_or_pic, (list, tuple)):
+    if isinstance(loc_or_pic, (tuple | list)):
         return loc_or_pic
     elif loc_or_pic is None:
         return None, None
@@ -359,13 +343,13 @@ def _get_coordinates(
             pixel_colors,
         )
         if not _match:
-            error_text = f"click(): couldn't find the picture: {loc_or_pic}"
+            error_text = f"Couldn't find the picture: {loc_or_pic}"
             logging.fatal(error_text)
             raise TimeoutError(error_text)
         return _match.getTarget()
     else:
         logging.warning(
-            f"get_coordinates: can't recognize this type of data: {loc_or_pic}"
+            f"getCoordinates: can't recognize this type of data: {loc_or_pic}"
         )
         return None, None
 
@@ -373,10 +357,10 @@ def _get_coordinates(
 def _find(
     image,
     region=None,
-    max_search_time=DEFAULT_MAX_SEARCH_TIME,
-    time_step=DEFAULT_TIME_STEP,
-    grayscale=DEFAULT_PRECISION,
-    precision=DEFAULT_PRECISION,
+    max_search_time=Config.DEFAULT_MAX_SEARCH_TIME,
+    time_step=Config.DEFAULT_TIME_STEP,
+    grayscale=Config.DEFAULT_PRECISION,
+    precision=Config.DEFAULT_PRECISION,
     pixel_colors=None,
 ):
     start_time = time.time()
@@ -393,7 +377,10 @@ def _find(
 
 
 def _findAny(
-    image_list, region=None, grayscale=DEFAULT_GRAYSCALE, precision=DEFAULT_PRECISION
+    image_list,
+    region=None,
+    grayscale=Config.DEFAULT_GRAYSCALE,
+    precision=Config.DEFAULT_PRECISION,
 ):
     np_region = _regionToNumpyArray(region)
     matches = []
@@ -415,11 +402,12 @@ def _imgDownsize(img: np.ndarray, multiplier):
     return cv2.resize(img, dim, interpolation=cv2.INTER_AREA)
 
 
-# def _screenshotValidate(screenshot: ScreenShot):
-
-
-def _regionValidate(reg: (tuple, list)):
+def _regionValidation(reg: tuple | list):
     x1, y1, x2, y2 = reg
+    x1 = int(x1)
+    y1 = int(y1)
+    x2 = int(x2)
+    y2 = int(y2)
     if (
         x1 < MONITOR_REGION[0]
         or y1 < MONITOR_REGION[1]
@@ -433,9 +421,10 @@ def _regionValidate(reg: (tuple, list)):
         raise TypeError(f"Region outside the screen: {(x1, y1, x2, y2)}")
     if not (x1 < x2 and y1 < y2):
         raise TypeError(f"Entered region is incorrect: {(x1, y1, x2, y2)}")
+    return (x1, y1, x2, y2)
 
 
-def _regionNormalization(reg):
+def _regionNormalization(reg=None):
     if isinstance(reg, ScreenShot):
         reg = (
             reg.left,
@@ -444,11 +433,11 @@ def _regionNormalization(reg):
             reg.top + reg.height,
         )
         # maybe remove this
-        _regionValidate(reg)
-    elif isinstance(reg, region):
+        reg = _regionValidation(reg)
+    elif isinstance(reg, Region):
         reg = reg.reg
-    elif isinstance(reg, (list, tuple)) and not _regionValidate(reg):
-        reg = tuple(reg)
+    elif isinstance(reg, (list | tuple)):
+        reg = _regionValidation(reg)
         pass
     elif reg is None:
         return None
@@ -460,16 +449,16 @@ def _regionNormalization(reg):
     return reg
 
 
-def _regionToNumpyArray(reg):
+def _regionToNumpyArray(reg=None):
     tuple_region = _regionNormalization(reg)
     if isinstance(reg, ScreenShot):
         grab_reg = reg
-    elif isinstance(reg, region):
+    elif isinstance(reg, Region):
         grab_reg = sct.grab(tuple_region)
     elif reg is None:
         grab_reg = sct.grab(sct.monitors[0])
         tuple_region = None
-    elif isinstance(reg, (tuple, list)):
+    elif isinstance(reg, (tuple | list)):
         grab_reg = sct.grab(tuple_region)
     else:
         raise TypeError(
@@ -495,8 +484,8 @@ def _imageToNumpyArray(image):
 def _exist(
     image,
     region=None,
-    grayscale=DEFAULT_GRAYSCALE,
-    precision=DEFAULT_PRECISION,
+    grayscale=Config.DEFAULT_GRAYSCALE,
+    precision=Config.DEFAULT_PRECISION,
 ):
     # TODO: region also must be saved in (x1,y1,x2,y2)
     # TODO: create full discription
@@ -545,21 +534,23 @@ def _exist(
         # imread from np_image must create always BGR images, but in my case it is RGB
         # sct.grab from np_region create always RGB images
 
-    if COMPRESSION_RATIO > 1:
-        np_image = _imgDownsize(np_image, COMPRESSION_RATIO)
-        np_region = _imgDownsize(np_region, COMPRESSION_RATIO)
-    elif COMPRESSION_RATIO < 1:
-        raise ValueError(f"Couldn't recognize COMPRESSION_RATIO: {COMPRESSION_RATIO}")
+    if Config.COMPRESSION_RATIO > 1:
+        np_image = _imgDownsize(np_image, Config.COMPRESSION_RATIO)
+        np_region = _imgDownsize(np_region, Config.COMPRESSION_RATIO)
+    elif Config.COMPRESSION_RATIO < 1:
+        raise ValueError(
+            f"Couldn't recognize COMPRESSION_RATIO: {Config.COMPRESSION_RATIO}"
+        )
 
     # also can use cv2.TM_CCOEFF, TM_CCORR_NORMED and TM_CCOEFF_NORMED in descending order of speed
     # for TM_CCORR_NORMED, minimum precision is 0.991
     result = cv2.matchTemplate(np_region, np_image, cv2.TM_CCOEFF_NORMED)
     min_val, max_val, min_loc, max_loc = cv2.minMaxLoc(result)
 
-    if COMPRESSION_RATIO > 1:
+    if Config.COMPRESSION_RATIO > 1:
         max_loc = (
-            max_loc[0] * COMPRESSION_RATIO + 1,
-            max_loc[1] * COMPRESSION_RATIO + 1,
+            max_loc[0] * Config.COMPRESSION_RATIO + 1,
+            max_loc[1] * Config.COMPRESSION_RATIO + 1,
         )
 
     if tuple_region:
@@ -573,7 +564,7 @@ def _exist(
 
     if max_val < precision:
         return None
-    return match(
+    return Match(
         max_loc, max_loc_center, max_val, precision, image_screenshot, region_screenshot
     )
 
@@ -587,9 +578,9 @@ def _getPixel(x, y):
     return (r, g, b)
 
 
-@_failSafeCheck
+@failSafeCheck
 def _hotkey(*keys, interval=0.0):
-    if OSX:
+    if Config.OSX:
         if interval < 0.02:
             interval = 0.02
 
@@ -612,8 +603,8 @@ def _hotkey(*keys, interval=0.0):
     logging.debug(f"Released: {manager.pressed_keys}")
 
 
-@_failSafeCheck
-def _tap(key, presses=1, interval=0.0, time_step=DEFAULT_TIME_STEP):
+@failSafeCheck
+def _tap(key, presses=1, interval=0.0, time_step=Config.DEFAULT_TIME_STEP):
     """tap function for tapping
 
     Args:
@@ -623,7 +614,7 @@ def _tap(key, presses=1, interval=0.0, time_step=DEFAULT_TIME_STEP):
         time_step (_type_, optional): _description_. Defaults to DEFAULT_TIME_STEP.
     """
 
-    if OSX and interval < 0.02:
+    if Config.OSX and interval < 0.02:
         interval = 0.02
     for x in range(presses):
         logging.debug(f"tap: {key}")
@@ -637,59 +628,59 @@ def _tap(key, presses=1, interval=0.0, time_step=DEFAULT_TIME_STEP):
         time.sleep(interval)
 
 
-@_failSafeCheck
+@failSafeCheck
 def _keyUp(key):
     manager.release(key)
 
 
-@_failSafeCheck
+@failSafeCheck
 def _keyDown(key):
     manager.press(key)
 
 
-@_failSafeCheck
+@failSafeCheck
 def _write(message):
     manager.type(message)
 
 
-@_failSafeCheck
+@failSafeCheck
 def _mouseMove(loc, duration=0.0):
     ag.moveTo(loc[0], loc[1], duration)
 
 
-@_failSafeCheck
+@failSafeCheck
 def _mouseMoveRelative(xOffset, yOffset, duration=0.0):
     ag.moveRel(xOffset, yOffset, duration)
 
 
-@_failSafeCheck
+@failSafeCheck
 def _mouseDown(
     loc_or_pic=None,
-    button=MOUSE_LEFT,
+    button=Config.MOUSE_LEFT,
     region=None,
-    max_search_time=DEFAULT_MAX_SEARCH_TIME,
-    time_step=DEFAULT_TIME_STEP,
-    grayscale=DEFAULT_GRAYSCALE,
-    precision=DEFAULT_PRECISION,
+    max_search_time=Config.DEFAULT_MAX_SEARCH_TIME,
+    time_step=Config.DEFAULT_TIME_STEP,
+    grayscale=Config.DEFAULT_GRAYSCALE,
+    precision=Config.DEFAULT_PRECISION,
 ):
-    x, y = _get_coordinates(
+    x, y = _getCoordinates(
         loc_or_pic, region, max_search_time, time_step, grayscale, precision
     )
 
     ag.mouseDown(x, y, button)
 
 
-@_failSafeCheck
+@failSafeCheck
 def _mouseUp(
     loc_or_pic=None,
-    button=MOUSE_LEFT,
+    button=Config.MOUSE_LEFT,
     region=None,
-    max_search_time=DEFAULT_MAX_SEARCH_TIME,
-    time_step=DEFAULT_TIME_STEP,
-    grayscale=DEFAULT_GRAYSCALE,
-    precision=DEFAULT_PRECISION,
+    max_search_time=Config.DEFAULT_MAX_SEARCH_TIME,
+    time_step=Config.DEFAULT_TIME_STEP,
+    grayscale=Config.DEFAULT_GRAYSCALE,
+    precision=Config.DEFAULT_PRECISION,
 ):
-    x, y = _get_coordinates(
+    x, y = _getCoordinates(
         loc_or_pic, region, max_search_time, time_step, grayscale, precision
     )
 
@@ -699,10 +690,10 @@ def _mouseUp(
 def _rightClick(
     loc_or_pic,
     region=None,
-    max_search_time=DEFAULT_MAX_SEARCH_TIME,
-    time_step=DEFAULT_TIME_STEP,
-    grayscale=DEFAULT_GRAYSCALE,
-    precision=DEFAULT_PRECISION,
+    max_search_time=Config.DEFAULT_MAX_SEARCH_TIME,
+    time_step=Config.DEFAULT_TIME_STEP,
+    grayscale=Config.DEFAULT_GRAYSCALE,
+    precision=Config.DEFAULT_PRECISION,
     clicks=1,
     interval=0.0,
 ):
@@ -748,7 +739,7 @@ def _sleep(secs: float):
     time.sleep(secs)
 
 
-def _saveImg(image):
+def _saveNumpyImg(image: np.ndarray):
     "image: np.ndarray"
 
     output = f"image_{time.strftime('%H_%M_%S')}.png"
@@ -763,7 +754,7 @@ def _saveScreenshot(region=None):
     if not region:
         sct.shot(output=output)
     else:
-        screenshot = sct.grab(tuple(region))
+        screenshot = sct.grab(_regionValidation(region))
         tools.to_png(screenshot.rgb, screenshot.size, output=output)
     path = os.path.join(os.getcwd(), output)
     print(f"Image '{path}' successfully saved")
@@ -830,7 +821,7 @@ def _imageExistFromFolder(path, precision):
     return imagesPos
 
 
-@_failSafeCheck
+@failSafeCheck
 def _paste(text: str):
     """fast paste text into selected window. Alternative ctrl + v, works in all platform*
     * Linux has not been tested yet
@@ -838,11 +829,25 @@ def _paste(text: str):
     Args:
         text (str): text, which one will be entered into active window
     """
-    clip.copy(text)
-    if OSX:
+    _copyToClip(text)
+    if Config.OSX:
         _hotkey(Key.cmd, "v")
     else:
         _hotkey(Key.ctrl, "v")
+
+
+def _copyToClip(text):
+    if Config.UNIX:
+        return Config.platformModule._copy(text)
+    else:
+        return clip.copy(text)
+
+
+def _pasteFromClip():
+    if Config.UNIX:
+        return Config.platformModule._paste()
+    else:
+        return clip.paste()
 
 
 def _dragDrop(start_location: list, end_location: list, duration=0.3, button="left"):
@@ -859,79 +864,32 @@ def _dragDrop(start_location: list, end_location: list, duration=0.3, button="le
     ag.dragTo(end_location[0], end_location[1], duration, button=button)
 
 
-@_failSafeCheck
+@failSafeCheck
 def _activateWindow(app_name: str):
     """focus window with name of application
 
     Args:
         app_name (str): can be used Firefox, Chrome, Manycam, Finder and other
     """
-
-    # TODO: activate only if the application has not been activated before
-    if OSX:
-        cmd = f"osascript -e 'activate application \"{app_name}\"'"
-        ans = subprocess.call(cmd, shell=True)
-        if ans:
-            logging.warning(f"activateWindow(): {app_name} failed")
-            return 1
-        logging.debug(f"activateWindow(): {app_name} activated")
-        return 0
-
-    elif WIN:
-        from ._win import ActiveWindow
-
-        ActiveWindow().set_foreground(app_name)
-        logging.debug("{0} activated".format(app_name))
-        return 0
+    return Config.platformModule._activateWindow(app_name)
 
 
 def _getWindowRegion(app_name: str):
     """
-    get the region of a window by its name in the
+    get the region of a window by its name
     """
-    if OSX:
-        APPLESCRIPT = f"""
-        tell application "{app_name}" to get the bounds of window 1
-        """
-        response = str(
-            subprocess.run(["osascript", "-e", APPLESCRIPT], capture_output=True).stdout
-        )
-        if response == "b''":
-            error_text = (
-                f"Couldn't find '{app_name}' window, current response: {response}"
-            )
-            logging.fatal(error_text)
-            raise OSError(error_text)
-        response = [int(i) for i in re.sub(r"[^0-9,]", "", response).split(",")]
-        region = [response[0], response[1], response[2] - 1, response[3] - 1]
-        return region
+    return Config.platformModule._getWindowRegion(app_name)
 
 
 def _minimizeWindow(app_name: str):
-    if OSX:
-        APPLESCRIPT = f"""
-        tell application "{app_name}" 
-            set miniaturized of window 1 to true
-        end tell
-        """
-        print(subprocess.run(["osascript", "-e", APPLESCRIPT], capture_output=True))
+    Config.platformModule._minimizeWindow(app_name)
 
 
-def _unminimazeWindow(app_name: str):
-    # TODO: doesn't work
-    if OSX:
-        APPLESCRIPT = f"""
-        tell application "{app_name}"
-            activate
-            delay 1
-            end tell
-        tell application "System Events" to set visible of process "{app_name}" to true
-        """
-        print(subprocess.run(["osascript", "-e", APPLESCRIPT], capture_output=True))
+def _unminimizeWindow(app_name: str):
+    Config.platformModule._unminimizeWindow(app_name)
 
 
-@_failSafeCheck
+@failSafeCheck
 def _deleteFile(file_path):
     logging.debug(f"deleting {file_path}")
-    # os.remove(file_path)  previous version
     send2trash(file_path)

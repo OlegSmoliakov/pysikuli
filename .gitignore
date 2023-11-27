@@ -167,3 +167,4 @@ pics
 poetry.lock
 build_test
 launch.json
+.vscode

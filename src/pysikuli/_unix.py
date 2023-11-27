@@ -1,16 +1,18 @@
 import re
 from subprocess import run
+from Xlib import display
+from Xlib.ext import randr
 
 
-def _paste():
+def _copy(text: str):
     run(
         ["xsel", "-b"],
-        input="pdflasd",
+        input=text,
         encoding="utf-8",
     )
 
 
-def _copy():
+def _paste():
     return run(["xsel", "-b"], capture_output=True, encoding="utf-8").stdout
 
 
@@ -41,3 +43,36 @@ def _apt_pkgs_installation_check(required_pkgs_name: tuple or list):
         print(
             f"\n\nPlease install the missing packages:{text}\n\nOn Ubuntu/Debian use this command: sudo apt install{text}"
         )
+
+
+def _getRefreshRate():
+    d = display.Display()
+    default_screen = d.get_default_screen()
+    info = d.screen(default_screen)
+
+    resources = randr.get_screen_resources(info.root)
+    active_modes = set()
+    for crtc in resources.crtcs:
+        crtc_info = randr.get_crtc_info(info.root, crtc, resources.config_timestamp)
+        if crtc_info.mode:
+            active_modes.add(crtc_info.mode)
+
+    for mode in resources.modes:
+        if mode.id in active_modes:
+            return int(mode.dot_clock / (mode.h_total * mode.v_total))
+
+
+def _activateWindow(app_name: str):
+    raise NotImplementedError()
+
+
+def _getWindowRegion(app_name: str):
+    raise NotImplementedError()
+
+
+def _minimizeWindow(app_name: str):
+    raise NotImplementedError()
+
+
+def _unminimizeWindow(app_name: str):
+    raise NotImplementedError()
