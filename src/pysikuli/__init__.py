@@ -55,7 +55,7 @@ from ._main import _deleteFile as deleteFile
 
 
 __author__ = "Oleg Smoliakov"
-__version__ = "0.0.2"
+__version__ = "0.1.0"
 
 _REGION_FORMAT = "x1y1x2y2"
 

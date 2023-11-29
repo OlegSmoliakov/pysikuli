@@ -161,7 +161,7 @@ cython_debug/
 
 macbook_splitcam_manycam_obs.py
 draft.py
-requirements.txt
+req.txt
 setup.py
 pics
 poetry.lock
