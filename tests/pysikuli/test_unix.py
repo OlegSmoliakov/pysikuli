@@ -11,6 +11,23 @@ if not platform.system() == "Linux":
 from ...src.pysikuli import _unix as unix
 
 
+@pytest.fixture
+def openTextEditor():
+    text = "some test text bla bla bla"
+
+    # run text editor
+    subprocess.Popen("xed", shell=True)
+    sik.sleep(0.5)
+
+    # cleanup clipboard
+    sik.tap(sik.Key.space)
+    sik.hotkey(sik.Key.shift, sik.Key.left)
+    sik.hotkey(sik.Key.ctrl, "c")
+    sik.tap(sik.Key.backspace)
+
+    return text
+
+
 class TestUnix:
     def test_accessibleNames(self):
         unix._activateWindow
@@ -22,21 +39,9 @@ class TestUnix:
         unix._paste
         unix._unminimizeWindow
 
-    def test_copy(self):
-        text = "some test text bla bla bla"
-
-        # run text editor
-        subprocess.Popen("xed", shell=True)
-        sik.sleep(0.5)
-
-        # cleanup clipboard
-        sik.tap(sik.Key.space)
-        sik.hotkey(sik.Key.shift, sik.Key.left)
-        sik.hotkey(sik.Key.ctrl, "c")
-        sik.tap(sik.Key.backspace)
-
+    def test_copy(self, openTextEditor):
         # insert text into clipboard
-        unix._copy(text)
+        unix._copy(openTextEditor)
         sik.hotkey(sik.Key.ctrl, "v")
 
         # close and save
@@ -46,30 +51,18 @@ class TestUnix:
         sik.write(path)
         sik.tap(sik.Key.enter), sik.sleep(1.5)
 
-        # save the result
+        # get the result
         with open(path) as f:
             result = f.read()
 
         # cleaning
         os.remove(path)
 
-        # test
-        assert result == f"{text}\n"
+        assert result == f"{openTextEditor}\n"
 
-    def test_paste(self):
-        text = "some test text bla bla bla"
-
-        # run text editor
-        subprocess.Popen("xed", shell=True)
-        sik.sleep(0.5)
-
-        # cleanup clipboard
-        sik.tap(sik.Key.space)
-        sik.hotkey(sik.Key.shift, sik.Key.left)
-        sik.hotkey(sik.Key.ctrl, "c")
-
+    def test_paste(self, openTextEditor):
         # type text
-        sik.write(text)
+        sik.write(openTextEditor)
         sik.hotkey(sik.Key.ctrl, "a")
         sik.hotkey(sik.Key.ctrl, "c")
 
@@ -80,11 +73,23 @@ class TestUnix:
         sik.tap(sik.Key.tab)
         sik.tap(sik.Key.enter)
 
-        assert result == text
+        assert result == openTextEditor
 
-    # def test_apt_pkgs_installation_check(self):
+    def test_apt_pkgs_installation_check(self):
+        assert (
+            unix._apt_pkgs_installation_check(
+                ["libgirepository1.0-dev", "libcairo2-dev", "xinput"]
+            )
+            is None
+        )
+        assert (
+            unix._apt_pkgs_installation_check(
+                ["libgirepository1.0-dev", "libcairo2-dev", "test"]
+            )
+            is None
+        )
 
-    # def test_getRefreshRate(self):
-
-    # def test_1(self):
-    #     pass
+    def test_getRefreshRate(self):
+        assert isinstance(unix._getRefreshRate(), int)
+        # for honor
+        assert unix._getRefreshRate() == 60

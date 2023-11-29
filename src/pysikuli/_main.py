@@ -74,6 +74,7 @@ def failSafeCheck(wrappedFunction):
 
 
 class Region(object):
+    # TODO: change has() to use _exist instead of _find
     TIME_STEP = Config.DEFAULT_TIME_STEP
     COMPRESSION_RATIO = Config.COMPRESSION_RATIO
 
@@ -198,70 +199,66 @@ class Region(object):
         image,
         grayscale=Config.DEFAULT_GRAYSCALE,
         precision=Config.DEFAULT_PRECISION,
+        pixel_colors: tuple = None,
     ):
-        return _exist(image, self.reg, grayscale, precision)
+        return _exist(image, self.reg, grayscale, precision, pixel_colors)
 
 
 class Match(object):
-    # q, space, esc, delete, backspace
-    exit_keys_cv2 = [113, 27, 32, 8, 255]
+    # q, esc, space, backspace
+    exit_keys_cv2 = [113, 27, 32, 8]
 
     def __init__(
         self,
         up_left_loc: tuple,
-        target_loc: tuple,
+        loc: tuple,
         score: float,
         precision: float,
-        image_screenshot,
-        region_screenshot,
+        np_image,
+        np_region,
     ):
         self.up_left_loc = up_left_loc
-        self.target_loc = target_loc
-        self.target_offset_loc = target_loc
-        self.target_x = target_loc[0]
-        self.target_y = target_loc[1]
-        self.target_offset_x = target_loc[0]
-        self.target_offset_y = target_loc[1]
+        self.loc = loc
+        self.offset_loc = loc
+        self.x = loc[0]
+        self.y = loc[1]
+        self.offset_x = loc[0]
+        self.offset_y = loc[1]
         self.score = round(score, 6)
         self.precision = precision
-        self.image_screenshot = image_screenshot
-        self.region_screenshot = region_screenshot
+        self.np_image = np_image
+        self.np_region = np_region
 
     def __repr__(self):
         args = [
-            "target_location={!r}".format(self.target_loc),
+            "location={!r}".format(self.loc),
             "score={!r}".format(self.score),
             "precision={!r}".format(self.precision),
         ]
         return "{}({})".format(type(self).__name__, ", ".join(args))
 
-    def _showImageCV2(self, window_name, img):
+    def _showImageCV2(self, window_name, np_img):
         cv2.namedWindow(window_name, cv2.WINDOW_NORMAL)
-        cv2.imshow(window_name, img)
+        cv2.imshow(window_name, np_img)
 
-        while True:
-            # Check if the window is closed
-            if cv2.getWindowProperty(window_name, cv2.WND_PROP_VISIBLE) < 1:
-                break
-
-            # Wait for a key event
-            key = cv2.waitKey(1)
-            if key != -1 and key in self.exit_keys_cv2:
+        while cv2.getWindowProperty(window_name, cv2.WND_PROP_VISIBLE) >= 1:
+            if cv2.waitKey(1) & 0xFF in self.exit_keys_cv2:
                 break
 
         cv2.destroyAllWindows()
 
     def showRegion(self):
-        self._showImageCV2("Region", self.region_screenshot)
+        self._showImageCV2("Region", self.np_region)
 
     def showImage(self):
-        self._showImageCV2("Pattern", self.image_screenshot)
+        self._showImageCV2("Pattern", self.np_image)
 
     def setTargetOffset(self, x, y):
-        self.target_offset_x += x
-        self.target_offset_y += y
-        self.target_offset_loc = (self.target_offset_x, self.target_offset_y)
-        return self.target_offset_loc
+        self.offset_x += x
+        self.offset_y += y
+        self.offset_loc = (self.offset_x, self.offset_y)
+        _locationValidation(self.offset_loc)
+        return self.offset_loc
 
 
 def _wait(
@@ -361,17 +358,13 @@ def _find(
     time_step=Config.DEFAULT_TIME_STEP,
     grayscale=Config.DEFAULT_PRECISION,
     precision=Config.DEFAULT_PRECISION,
-    pixel_colors=None,
+    pixel_colors: tuple = None,
 ):
     start_time = time.time()
     while time.time() - start_time < max_search_time:
-        _match = _exist(image, region, grayscale, precision)
+        _match = _exist(image, region, grayscale, precision, pixel_colors)
         if _match != None:
-            if pixel_colors:
-                if _getPixel(*_match.getTarget()) == pixel_colors:
-                    return _match
-            else:
-                return _match
+            return _match
         time.sleep(time_step)
     return None
 
@@ -381,12 +374,13 @@ def _findAny(
     region=None,
     grayscale=Config.DEFAULT_GRAYSCALE,
     precision=Config.DEFAULT_PRECISION,
+    pixel_colors: tuple = None,
 ):
     np_region = _regionToNumpyArray(region)
     matches = []
 
     for image in image_list:
-        matches.append(_exist(image, np_region, grayscale, precision=precision))
+        matches.append(_exist(image, np_region, grayscale, precision, pixel_colors))
     return [x for x in matches if x is not None]
 
 
@@ -422,6 +416,17 @@ def _regionValidation(reg: tuple | list):
     if not (x1 < x2 and y1 < y2):
         raise TypeError(f"Entered region is incorrect: {(x1, y1, x2, y2)}")
     return (x1, y1, x2, y2)
+
+
+def _locationValidation(loc: tuple):
+    x, y = loc
+    if (
+        x < MONITOR_REGION[0]
+        or y < MONITOR_REGION[1]
+        or x > MONITOR_REGION[2]
+        or y > MONITOR_REGION[3]
+    ):
+        raise ValueError(f"location {loc} is outside the screen")
 
 
 def _regionNormalization(reg=None):
@@ -486,6 +491,7 @@ def _exist(
     region=None,
     grayscale=Config.DEFAULT_GRAYSCALE,
     precision=Config.DEFAULT_PRECISION,
+    pixel_colors: tuple = None,
 ):
     # TODO: region also must be saved in (x1,y1,x2,y2)
     # TODO: create full discription
@@ -521,12 +527,12 @@ def _exist(
         np_image = cv2.cvtColor(np_image, cv2.COLOR_BGR2GRAY)
         np_region = cv2.cvtColor(np_region, cv2.COLOR_RGB2GRAY)
 
-        image_screenshot = np_image
-        region_screenshot = np_region
+        image_capture = np_image
+        region_capture = np_region
     else:
         # RGB = np_region[1770][1223], maybe store it for pixel comparing
-        image_screenshot = np_image
-        region_screenshot = np_region
+        image_capture = np_image
+        region_capture = np_region
         # both images must be stored in BGR format for futher matchTemplate
         np_image = cv2.cvtColor(np_image, cv2.COLOR_RGB2BGR)
         np_region = cv2.cvtColor(np_region, cv2.COLOR_RGB2BGR)
@@ -564,12 +570,18 @@ def _exist(
 
     if max_val < precision:
         return None
-    return Match(
-        max_loc, max_loc_center, max_val, precision, image_screenshot, region_screenshot
-    )
+    if not pixel_colors:
+        return Match(
+            max_loc, max_loc_center, max_val, precision, image_capture, region_capture
+        )
+    elif _getPixel(*max_loc_center) == pixel_colors:
+        return Match(
+            max_loc, max_loc_center, max_val, precision, image_capture, region_capture
+        )
 
 
 def _getPixel(x, y):
+    # TODO: Add a way to work with the finished np_image to avoid second grab call
     tmp_reg = sct.grab((x, y, x + 1, y + 1))
     tmp_reg = np.array(tmp_reg)
     r = tmp_reg[0][0][2]
@@ -739,10 +751,12 @@ def _sleep(secs: float):
     time.sleep(secs)
 
 
-def _saveNumpyImg(image: np.ndarray):
+def _saveNumpyImg(image: np.ndarray, name):
     "image: np.ndarray"
-
-    output = f"image_{time.strftime('%H_%M_%S')}.png"
+    if name:
+        output = f"{name}_{time.strftime('%H_%M_%S')}.png"
+    else:
+        output = f"image_{time.strftime('%H_%M_%S')}.png"
     cv2.imwrite(output, image)
     path = os.path.join(os.getcwd(), output)
     print(f"Image {path} successfully saved")

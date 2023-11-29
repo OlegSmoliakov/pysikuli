@@ -40,6 +40,7 @@ from ._main import _findAny as findAny
 from ._main import _getPixel as getPixel
 from ._main import _wait as wait
 from ._main import _sleep as sleep
+from ._main import _exist as exist
 
 # import the window management function
 from ._main import _activateWindow as activateWindow
@@ -60,6 +61,22 @@ _REGION_FORMAT = "x1y1x2y2"
 
 
 def getRegion(interval=0.5):
+    """
+    getRigion helps to determine the coordinates of a region by hovering
+    the mouse over the points of the screen you want to see.
+
+    the region requires 2 points: left-top and right-bottom.
+    if you hold the mouse on the same spot for 3 `intervals`
+    the point will be captured and capture sound will be played *by default
+
+    Args:
+        `interval` (float): time in seconds, which uses for delay
+        between each mouse posuition capture  . Defaults to 0.5.
+
+    Returns:
+        updated clipboard with prepared region like: "1, 2, 3, 4"
+        also print this region in terminal
+    """
     return _getRegion(_REGION_FORMAT, interval)
 
 

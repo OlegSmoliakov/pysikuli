@@ -2,14 +2,11 @@ import pytest
 import os
 import time
 import numpy as np
+import multiprocessing
 
 from ...src import pysikuli as sik
-from ...src.pysikuli import _main as main
-
-from ...src.pysikuli import Config
-
-
-# TODO: unittest sound
+from ...src.pysikuli import _main as main, Config
+from ...src.pysikuli._main import Region, Match
 
 
 @pytest.fixture()
@@ -53,6 +50,11 @@ def test_img_ndarray(test_img_ScreenShot):
     return np.array(test_img_ScreenShot)
 
 
+@pytest.fixture()
+def test_reg_ndarray(test_reg_reg):
+    return np.array(main.sct.grab(test_reg_reg))
+
+
 class TestMain:
     def test_accessibleNames(self):
         main.MONITOR_REGION
@@ -82,7 +84,7 @@ class TestMain:
             exist(image=[1, 2])
             exist(image=(1, 2))
 
-        assert isinstance(exist(image=test_img_ndarray), main.Match)
+        assert isinstance(exist(image=test_img_ndarray), Match)
 
         exist(
             image=test_img_ScreenShot,
@@ -288,16 +290,133 @@ class TestMain:
 
 @pytest.fixture()
 def test_match(test_class_region, test_img_ScreenShot):
-    return test_class_region.find(test_img_ScreenShot)
+    return test_class_region.find(test_img_ScreenShot, grayscale=False)
+
+
+@pytest.fixture()
+def show_region(test_match):
+    process = multiprocessing.Process(target=test_match.showRegion)
+    process.start()
+    time.sleep(0.2)
+
+
+@pytest.fixture()
+def show_image(test_match):
+    process = multiprocessing.Process(target=test_match.showImage)
+    process.start()
+    time.sleep(0.2)
 
 
 class TestMatch:
-    def test_showImage(self, test_match):
-        sik.keyDown(sik.Key.esc)
-        test_match.showImage()
-        sik.keyUp(sik.Key.esc)
+    def test_accessibleNames(self):
+        Match.exit_keys_cv2
+        Match._showImageCV2
+        Match.setTargetOffset
+        Match.showImage
+        Match.showRegion
 
-    def test_showRegion(self, test_match):
-        sik.keyDown(sik.Key.esc)
-        test_match.showRegion()
-        sik.keyUp(sik.Key.esc)
+    def test_init(
+        self,
+        test_match,
+        test_img_ndarray,
+        test_reg_ndarray,
+    ):
+        assert test_match.x == 958
+        assert test_match.y == 538
+        assert test_match.up_left_loc == (957, 537)
+        assert test_match.loc == (958, 538)
+        assert test_match.offset_loc == (958, 538)
+        assert test_match.offset_x == 958
+        assert test_match.offset_y == 538
+        assert test_match.score == 1
+        assert test_match.precision == 0.8
+        assert np.array_equal(test_match.np_image, test_img_ndarray)
+        assert np.array_equal(test_match.np_region, test_reg_ndarray)
+
+    def test_repr(self, test_match):
+        assert (
+            f"Match(location={test_match.loc}, score={test_match.score}, precision={Config.DEFAULT_PRECISION})"
+            == repr(test_match)
+        )
+
+    @pytest.mark.parametrize(
+        "key", ["q", sik.Key.esc, sik.Key.backspace, sik.Key.space]
+    )
+    @pytest.mark.usefixtures("show_image")
+    def test_showImage_key_closure(self, key):
+        sik.tap(key)
+
+    @pytest.mark.parametrize(
+        "key", ["q", sik.Key.esc, sik.Key.backspace, sik.Key.space]
+    )
+    @pytest.mark.usefixtures("show_region")
+    def test_showRegion_key_closure(self, key):
+        sik.tap(key)
+
+    @pytest.mark.usefixtures("show_region")
+    def test_showRegion_click_closure(self):
+        sik.click((1140, 370))
+
+    @pytest.mark.parametrize("offset", [50, 100, 150])
+    def test_setTargetOffset(self, test_match, offset):
+        x, y = test_match.loc
+        expected_loc = (x + offset, y + offset)
+        assert expected_loc == test_match.setTargetOffset(offset, offset)
+
+    @pytest.mark.parametrize(
+        "offset_x,offset_y",
+        [(50, 2000), (2000, 50), (-50, -2000), (-2000, -50)],
+    )
+    def test_setTargetOffset_ValueError(self, test_match, offset_x, offset_y):
+        x, y = test_match.loc
+        expected_loc = (x + offset_x, y + offset_y)
+        with pytest.raises(ValueError):
+            assert expected_loc == test_match.setTargetOffset(offset_x, offset_y)
+
+
+class TestRegion:
+    def test_accessibleNames(self):
+        Region.COMPRESSION_RATIO
+        Region.TIME_STEP
+        Region.click
+        Region.exist
+        Region.find
+        Region.findAny
+        Region.has
+        Region.rightClick
+        Region.wait
+
+    def test_init(self, test_reg_reg):
+        reg = Region(*test_reg_reg)
+        assert reg.reg == test_reg_reg
+        assert reg.x1 == test_reg_reg[0]
+        assert reg.y1 == test_reg_reg[1]
+        assert reg.x2 == test_reg_reg[2]
+        assert reg.y2 == test_reg_reg[3]
+
+    def test_click(self):
+        pass
+
+    def test_exist(self):
+        pass
+
+    def test_click(self):
+        pass
+
+    def test_click(self):
+        pass
+
+    def test_click(self):
+        pass
+
+    def test_click(self):
+        pass
+
+    def test_click(self):
+        pass
+
+    def test_has(self):
+        pass
+
+    def test_wait(self):
+        pass

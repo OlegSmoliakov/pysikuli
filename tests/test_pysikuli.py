@@ -51,6 +51,7 @@ class TestPysikuli:
         sik.getPixel
         sik.wait
         sik.sleep
+        sik.exist
 
         # tools-related API
         sik.getLocation
@@ -65,3 +66,7 @@ class TestPysikuli:
         expected_reg = f"{test_loc[0]}, {test_loc[1]}, {test_loc[0] + test_interrupt_offset}, {test_loc[1] + test_interrupt_offset}"
 
         assert captured_reg == expected_reg
+        assert sik.getRegion
+
+    def test_exist_docstring(self):
+        assert sik.exist.__doc__ == sik._main._exist.__doc__
