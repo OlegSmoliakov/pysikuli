@@ -1,9 +1,11 @@
 from AppKit import NSScreen
 import subprocess
+import pyperclip
 import logging
 import re
 
 
+# NOTE depricated
 def _getRefreshRate():
     maxRefreshRate = 0
     for each in NSScreen.screens():
@@ -14,6 +16,7 @@ def _getRefreshRate():
         return maxRefreshRate
 
 
+# NOTE depricated
 def _activateWindow(app_name: str):
     # TODO: activate only if the application has not been activated before
     cmd = f"osascript -e 'activate application \"{app_name}\"'"
@@ -25,6 +28,7 @@ def _activateWindow(app_name: str):
     return 0
 
 
+# NOTE depricated
 def _getWindowRegion(app_name: str):
     APPLESCRIPT = f"""
     tell application "{app_name}" to get the bounds of window 1
@@ -41,6 +45,7 @@ def _getWindowRegion(app_name: str):
     return region
 
 
+# NOTE depricated
 def _minimizeWindow(app_name: str):
     APPLESCRIPT = f"""
     tell application "{app_name}" 
@@ -50,6 +55,7 @@ def _minimizeWindow(app_name: str):
     print(subprocess.run(["osascript", "-e", APPLESCRIPT], capture_output=True))
 
 
+# NOTE depricated
 def _unminimizeWindow(app_name: str):
     # TODO: doesn't work
     APPLESCRIPT = f"""
@@ -60,3 +66,11 @@ def _unminimizeWindow(app_name: str):
     tell application "System Events" to set visible of process "{app_name}" to true
     """
     print(subprocess.run(["osascript", "-e", APPLESCRIPT], capture_output=True))
+
+
+def _copy(text):
+    return pyperclip.copy(text)
+
+
+def _paste():
+    return pyperclip.paste()

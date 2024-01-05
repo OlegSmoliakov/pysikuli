@@ -2,13 +2,14 @@ import pytest
 import platform
 import os
 import subprocess
-from subprocess import run
 from ...src import pysikuli as sik
 
 if not platform.system() == "Linux":
     pytest.skip("skipping Linux-only tests", allow_module_level=True)
 
 from ...src.pysikuli import _unix as unix
+
+TEST_REFRESH_RATE = 60
 
 
 @pytest.fixture
@@ -17,7 +18,7 @@ def openTextEditor():
 
     # run text editor
     subprocess.Popen("xed", shell=True)
-    sik.sleep(0.5)
+    sik.sleep(1)
 
     # cleanup clipboard
     sik.tap(sik.Key.space)
@@ -30,14 +31,10 @@ def openTextEditor():
 
 class TestUnix:
     def test_accessibleNames(self):
-        unix._activateWindow
         unix._apt_pkgs_installation_check
         unix._copy
         unix._getRefreshRate
-        unix._getWindowRegion
-        unix._minimizeWindow
         unix._paste
-        unix._unminimizeWindow
 
     def test_copy(self, openTextEditor):
         # insert text into clipboard
@@ -75,21 +72,41 @@ class TestUnix:
 
         assert result == openTextEditor
 
-    def test_apt_pkgs_installation_check(self):
+    def test_apt_pkgs_installation_check_return_none(self):
         assert (
             unix._apt_pkgs_installation_check(
                 ["libgirepository1.0-dev", "libcairo2-dev", "xinput"]
             )
             is None
         )
-        assert (
-            unix._apt_pkgs_installation_check(
-                ["libgirepository1.0-dev", "libcairo2-dev", "test"]
+
+    @pytest.mark.parametrize("test_pkgs", [["test"], ["test", "test_pkg_test"]])
+    def test_apt_pkgs_installation_check_return_print(self, capsys, test_pkgs):
+        unix._apt_pkgs_installation_check(test_pkgs)
+        captured = capsys.readouterr().out
+
+        str_test_pkgs = ""
+        for pkg in test_pkgs:
+            str_test_pkgs = f"{str_test_pkgs} {pkg}"
+
+        str_test_pkgs_reversed = ""
+        test_pkgs = test_pkgs[::-1]
+        for pkg in test_pkgs:
+            str_test_pkgs_reversed = f"{str_test_pkgs_reversed} {pkg}"
+
+        try:
+            expected_output = (
+                f"\n\nPlease install the missing packages:{str_test_pkgs}\n\n"
+                f"On Ubuntu/Debian use this command: sudo apt install{str_test_pkgs}\n"
             )
-            is None
-        )
+            assert captured == expected_output
+        except AssertionError:
+            expected_output = (
+                f"\n\nPlease install the missing packages:{str_test_pkgs_reversed}\n\n"
+                f"On Ubuntu/Debian use this command: sudo apt install{str_test_pkgs_reversed}\n"
+            )
+            assert captured == expected_output
 
     def test_getRefreshRate(self):
         assert isinstance(unix._getRefreshRate(), int)
-        # for honor
-        assert unix._getRefreshRate() == 60
+        assert unix._getRefreshRate() == TEST_REFRESH_RATE

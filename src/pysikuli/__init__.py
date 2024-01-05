@@ -1,63 +1,106 @@
 """
-:author: Oleg Smoliakov
-:license: GNU GENERAL PUBLIC LICENSE Version 3
-:copyright (c) 2023 Oleg Smoliakov
+Fast cross-platform python module for desktop gui automation
 """
 
+from time import sleep
+
 # import config file constants and classes
-from ._config import Key, Config
+from ._config import Key, Button, config
 
-# import optional helpfull utils for user
-from ._utils import _getLocation as getLocation
-from ._utils import _getRegion
+MONITOR_REGION = config.MONITOR_REGION
+MONITOR_RESOLUTION = config.MONITOR_RESOLUTION
 
+# import optional helpfull utils for the user
+from ._utils import (
+    getLocation,
+    _getRegion,
+    cleanupPics,
+)
 
-from ._main import Region, MONITOR_REGION, MONITOR_RESOLUTION
+from ._main import Region
 
 # import keyboard-related functions
-from ._main import _tap as tap
-from ._main import _keyUp as keyUp
-from ._main import _keyDown as keyDown
-from ._main import _hotkey as hotkey
-from ._main import _write as write
-from ._main import _paste as paste
-from ._main import _copyToClip as copyToClip
-from ._main import _pasteFromClip as pasteFromClip
+from ._main import (
+    tap,
+    keyUp,
+    keyDown,
+    hotkey,
+    write,
+    paste,
+    copyToClip,
+    pasteFromClip,
+    pressedKeys,
+)
+
 
 # import mouse-related functions
-from ._main import _click as click
-from ._main import _rightClick as rightClick
-from ._main import _mouseDown as mouseDown
-from ._main import _mouseUp as mouseUp
-from ._main import _mouseMove as mouseMove
-from ._main import _mouseMoveRelative as mouseMoveRealive
-from ._main import _dragDrop as dragDrop
+from ._main import (
+    click,
+    rightClick,
+    mouseDown,
+    mouseUp,
+    mouseMove,
+    mouseSmoothMove,
+    mouseMoveRelative,
+    mousePosition,
+    scroll,
+    hscroll,
+    vscroll,
+    dragDrop,
+)
 
 
 # import Screenshot-related functions
-from ._main import _find as find
-from ._main import _findAny as findAny
-from ._main import _getPixel as getPixel
-from ._main import _wait as wait
-from ._main import _sleep as sleep
-from ._main import _exist as exist
+from ._main import (
+    grab,
+    find,
+    findAny,
+    getPixel,
+    wait,
+    exist,
+    imageExistFromFolder,
+    existCount,
+    waitWhileExist,
+)
 
-# import the window management function
-from ._main import _activateWindow as activateWindow
-from ._main import _getWindowRegion as getWindowRegion
-from ._main import _minimizeWindow as minimizeWindow
-from ._main import _unminimizeWindow as unminimizeWindow
 
-# importing the file management function
-from ._main import _saveNumpyImg as saveNumpyImg
-from ._main import _saveScreenshot as saveScreenshot
-from ._main import _deleteFile as deleteFile
+# import the window management functions
+from ._main import (
+    activateWindow,
+    activateWindowUnderMouse,
+    activateWindowAt,
+    getWindowRegion,
+    getWindowWithTitle,
+    getWindowUnderMouse,
+    getAllWindowsTitle,
+    minimizeWindow,
+    maximizeWindow,
+    closeWindow,
+    windowExist,
+)
+
+
+# import pymsgbox functions
+from ._main import (
+    popupAlert,
+    popupPassword,
+    popupConfirm,
+    popupPrompt,
+)
+
+
+# importing the file management functions
+from ._main import (
+    saveNumpyImg,
+    saveScreenshot,
+    deleteFile,
+)
 
 
 __author__ = "Oleg Smoliakov"
-__version__ = "0.1.0"
+__version__ = "0.0.12"
 
-_REGION_FORMAT = "x1y1x2y2"
+_REG_FORMAT = "x1y1x2y2"
 
 
 def getRegion(interval=0.5):
@@ -75,12 +118,12 @@ def getRegion(interval=0.5):
 
     Returns:
         updated clipboard with prepared region like: "1, 2, 3, 4"
-        also print this region in terminal
+        also print this region in console
     """
-    return _getRegion(_REGION_FORMAT, interval)
+    return _getRegion(_REG_FORMAT, interval)
 
 
-if Config.UNIX:
+if config.UNIX:
     REQUIRED_PKGS_LINUX = ["libgirepository1.0-dev", "libcairo2-dev", "xinput"]
     from ._unix import _apt_pkgs_installation_check
 

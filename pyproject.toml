@@ -1,11 +1,18 @@
 [tool.poetry]
 authors = ["OlegSmoliakov <smailzpro@gmail.com>"]
 name = "pysikuli"
-version = "0.0.8"
+version = "0.0.12"
 description = "Fast cross-platform RPA tool for GUI automation"
 readme = "README.md"
 license = "LICENSE.txt"
-keywords = ["gui", "automation", "desktop", "RPA", "testing"]
+keywords = ["gui", "automation", "desktop", "RPA", "test", "testing",
+            "cross-platform", "window", "control", "menu", "title", "name",
+            "geometry", "size", "position", "move", "resize", "minimize",
+            "maximize", "restore", "hide", "show", "activate", "raise",
+            "lower", "close", "screen-size", "mouse-position", "keyboard", 
+            "mouse", "cursor", "click", "press", "keystroke", "screen", 
+            "screenshot", "screencapture", "screengrab", "clipboard",
+]
 classifiers = [
     "License :: OSI Approved :: GNU General Public License v3 (GPLv3)",
     "Programming Language :: Python :: 3.11",
@@ -20,21 +27,28 @@ classifiers = [
 
 [tool.poetry.dependencies]
 python = "^3.10"
+pip = "^23.3.2"
 wheel = "^0.41.3"
-pyautogui = "^0.9.54"
-opencv-python = "^4.8.1.78"
 mss = "^9.0.1"
+opencv-python = "^4.8.1.78"
 send2trash = "^1.8.2"
 pyhotkey = "^1.5.0"
-numpy = "^1.26.2"
-# playsound = {git = "https://github.com/killjoy1221/playsound.git"}
-pygobject = "^3.46.0"
-
+playsound = "1.2.2"
+pygobject = {version = "^3.46.0", markers = "platform_system == 'Linux'"}   #needed for playsound only
+pyperclip = {version = "^1.8.2", markers = "platform_system != 'Linux'"}
+# evdev-1.6.1 mss-9.0.1 numpy-1.26.2 opencv-python-4.8.1.78
+# playsound-1.2.2 pycairo-1.25.1 pygobject-3.46.0 pyhotkey-1.5.0
+# pynput-1.7.6 pysikuli-0.0.10 python-xlib-0.33 send2trash-1.8.2 six-1.16.0 wheel-0.41.3 pyperclip-1.8.2
+pywinctl = "^0.3"
+pymsgbox = "^1.0.9"
 
 
 [tool.poetry.group.dev.dependencies]
 pyinstrument = "^4.6.1"
 twine = "^4.0.2"
+mutagen = {version = "^1.47.0", markers = "platform_system == 'Linux'"}
+pytest = "^7.4.3"
+pytest-cov = "^4.1.0"
 
 [build-system]
 requires = ["poetry-core"]

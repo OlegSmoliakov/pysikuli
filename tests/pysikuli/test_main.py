@@ -1,19 +1,26 @@
 import pytest
 import os
 import time
+import pymonctl as pmc
 import numpy as np
 import multiprocessing
 
 from ...src import pysikuli as sik
-from ...src.pysikuli import _main as main, Config
+from ...src.pysikuli import _main as main, config
 from ...src.pysikuli._main import Region, Match
+
+
+@pytest.fixture()
+def test_setup():
+    sik.config.MOUSE_MOVE_DURATION = 0
+    sik.config.MOUSE_MOVE_STEPS = 0
 
 
 @pytest.fixture()
 def test_img_reg():
     half_reg_monitor = [
-        main.MONITOR_RESOLUTION[0] // 2,
-        main.MONITOR_RESOLUTION[1] // 2,
+        config.MONITOR_RESOLUTION[0] // 2,
+        config.MONITOR_RESOLUTION[1] // 2,
     ]
     test_img_reg = (
         half_reg_monitor[0] - 2,
@@ -37,7 +44,7 @@ def test_reg_reg(test_img_reg):
 
 @pytest.fixture()
 def test_img_ScreenShot(test_img_reg):
-    return main.sct.grab(test_img_reg)
+    return main._grab(test_img_reg)
 
 
 @pytest.fixture()
@@ -52,14 +59,11 @@ def test_img_ndarray(test_img_ScreenShot):
 
 @pytest.fixture()
 def test_reg_ndarray(test_reg_reg):
-    return np.array(main.sct.grab(test_reg_reg))
+    return np.array(main._grab(test_reg_reg))
 
 
+@pytest.mark.usefixtures("test_setup")
 class TestMain:
-    def test_accessibleNames(self):
-        main.MONITOR_REGION
-        main.MONITOR_RESOLUTION
-
     def test_activateWindow(self):
         pass
 
@@ -167,8 +171,7 @@ class TestMain:
         self, test_class_region, test_reg_reg, test_img_ScreenShot, test_img_reg
     ):
         regionNormalization = main._regionNormalization
-
-        assert regionNormalization() == None
+        assert regionNormalization() == pmc.getPrimary().box
         assert regionNormalization(test_img_ScreenShot) == test_img_reg
         assert regionNormalization(test_class_region) == test_reg_reg
 
@@ -190,8 +193,8 @@ class TestMain:
         )
         returned_shape = (np_reg.shape[1], np_reg.shape[0])
         assert isinstance(np_reg, np.ndarray)
-        assert (original_shape, returned_shape)
-        assert (tuple_reg, test_reg_reg)
+        assert original_shape == returned_shape
+        assert tuple_reg == test_reg_reg
 
     def test_regionToNumpyArray_tuple_2(self, test_reg_reg):
         regionToNumpyArray = main._regionToNumpyArray
@@ -230,7 +233,7 @@ class TestMain:
 
     def test_regionToNumpyArray_test_img_ScreenShot_2(self):
         regionToNumpyArray = main._regionToNumpyArray
-        screenshot = main.ScreenShot([1, 2, 4, 5], main.sct.monitors[0])
+        screenshot = main.ScreenShot([1, 2, 4, 5], main.mss().monitors[0])
         with pytest.raises(TypeError):
             regionToNumpyArray(screenshot)
 
@@ -289,7 +292,7 @@ class TestMain:
 
 
 @pytest.fixture()
-def test_match(test_class_region, test_img_ScreenShot):
+def test_match(test_class_region, test_img_ScreenShot) -> main.Match:
     return test_class_region.find(test_img_ScreenShot, grayscale=False)
 
 
@@ -307,6 +310,7 @@ def show_image(test_match):
     time.sleep(0.2)
 
 
+@pytest.mark.usefixtures("test_setup")
 class TestMatch:
     def test_accessibleNames(self):
         Match.exit_keys_cv2
@@ -324,7 +328,7 @@ class TestMatch:
         assert test_match.x == 958
         assert test_match.y == 538
         assert test_match.up_left_loc == (957, 537)
-        assert test_match.loc == (958, 538)
+        assert test_match.center_loc == (958, 538)
         assert test_match.offset_loc == (958, 538)
         assert test_match.offset_x == 958
         assert test_match.offset_y == 538
@@ -335,7 +339,7 @@ class TestMatch:
 
     def test_repr(self, test_match):
         assert (
-            f"Match(location={test_match.loc}, score={test_match.score}, precision={Config.DEFAULT_PRECISION})"
+            f"Match(location={test_match.center_loc}, score={test_match.score}, precision={config.PRECISION})"
             == repr(test_match)
         )
 
@@ -359,7 +363,7 @@ class TestMatch:
 
     @pytest.mark.parametrize("offset", [50, 100, 150])
     def test_setTargetOffset(self, test_match, offset):
-        x, y = test_match.loc
+        x, y = test_match.center_loc
         expected_loc = (x + offset, y + offset)
         assert expected_loc == test_match.setTargetOffset(offset, offset)
 
@@ -368,12 +372,13 @@ class TestMatch:
         [(50, 2000), (2000, 50), (-50, -2000), (-2000, -50)],
     )
     def test_setTargetOffset_ValueError(self, test_match, offset_x, offset_y):
-        x, y = test_match.loc
+        x, y = test_match.center_loc
         expected_loc = (x + offset_x, y + offset_y)
         with pytest.raises(ValueError):
             assert expected_loc == test_match.setTargetOffset(offset_x, offset_y)
 
 
+@pytest.mark.usefixtures("test_setup")
 class TestRegion:
     def test_accessibleNames(self):
         Region.COMPRESSION_RATIO
@@ -400,22 +405,19 @@ class TestRegion:
     def test_exist(self):
         pass
 
-    def test_click(self):
+    def test_exist(self):
         pass
 
-    def test_click(self):
+    def test_find(self):
         pass
 
-    def test_click(self):
-        pass
-
-    def test_click(self):
-        pass
-
-    def test_click(self):
+    def test_findAny(self):
         pass
 
     def test_has(self):
+        pass
+
+    def test_rightClick(self):
         pass
 
     def test_wait(self):

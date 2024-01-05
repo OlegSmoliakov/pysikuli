@@ -164,7 +164,6 @@ draft.py
 req.txt
 setup.py
 pics
-poetry.lock
 build_test
 launch.json
 .vscode

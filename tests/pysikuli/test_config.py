@@ -1,47 +1,47 @@
 import pytest
 import platform
+import PyHotKey
 from ...src import pysikuli as sik
-from ...src.pysikuli import Config, Key
+from ...src.pysikuli import config, Key
 
 
 class TestConfig:
     def test_accessibleNames(self):
-        Config.COMPRESSION_RATIO
-        Config.DEFAULT_GRAYSCALE
-        Config.DEFAULT_MAX_SEARCH_TIME
-        Config.DEFAULT_PRECISION
-        Config.DEFAULT_TIME_STEP
-        Config.FAILSAFE
-        Config.FAILSAFE_HOTKEY
-        Config.FAILSAFE_POINTS
-        Config.MAX_REFRESH_RATE
-        Config.MOUSE_LEFT
-        Config.MOUSE_MIDDLE
-        Config.MOUSE_MOVE_SPEED
-        Config.MOUSE_RIGHT
-        Config.OSX
-        Config.PAUSE_BETWEEN_ACTION
-        Config.SOUND_CAPTURE_PATH
-        Config.SOUND_FINISH_PATH
-        Config.SOUND_ON
-        Config.UNIX
-        Config.WIN
-        Config.platformModule
+        config.COMPRESSION_RATIO
+        config.GRAYSCALE
+        config.MAX_SEARCH_TIME
+        config.PRECISION
+        config.TIME_STEP
+        config.FAILSAFE
+        config.FAILSAFE_HOTKEY
+        config.FAILSAFE_REGIONS
+        config.REFRESH_RATE
+        config.MOUSE_PRIMARY_BUTTON
+        config.MOUSE_SECONDARY_BUTTON
+        config.MOUSE_SPEED
+        config.OSX
+        config.PAUSE_BETWEEN_ACTION
+        config.SOUND_CAPTURE_PATH
+        config.SOUND_FINISH_PATH
+        config.SOUND_ON
+        config.UNIX
+        config.WIN
+        config.platformModule
 
     @pytest.mark.skipif(platform.system() != "Darwin", reason="OS specific test")
     def test_OSX(slef):
-        assert Config.OSX is True
-        assert Config.platformModule == sik._osx
+        assert config.OSX is True
+        assert config.platformModule == sik._osx
 
     @pytest.mark.skipif(platform.system() != "Windows", reason="OS specific test")
     def test_OSX(slef):
-        assert Config.WIN is True
-        assert Config.platformModule == sik._win
+        assert config.WIN is True
+        assert config.platformModule == sik._win
 
     @pytest.mark.skipif(platform.system() != "Linux", reason="OS specific test")
     def test_OSX(slef):
-        assert Config.UNIX is True
-        assert Config.platformModule == sik._unix
+        assert config.UNIX is True
+        assert config.platformModule == sik._unix
 
 
 class TestKey:
@@ -49,10 +49,7 @@ class TestKey:
         Key.alt
         Key.alt_gr
         Key.alt_r
-        Key.backspace
         Key.caps_lock
-        Key.cmd
-        Key.cmd_r
         Key.ctrl
         Key.ctrl_r
         Key.delete
@@ -81,7 +78,6 @@ class TestKey:
         Key.f19
         Key.f20
         Key.home
-        Key.insert
         Key.left
         Key.media_next
         Key.media_play_pause
@@ -89,21 +85,35 @@ class TestKey:
         Key.media_volume_down
         Key.media_volume_mute
         Key.media_volume_up
-        Key.menu
-        Key.num_lock
-        Key.option
-        Key.option_r
         Key.page_down
         Key.page_up
-        Key.pause
-        Key.print_screen
-        Key.return_r
         Key.right
-        Key.scroll_lock
         Key.shift
         Key.shift_r
         Key.space
         Key.tab
         Key.up
-        Key.win
-        Key.win_r
+
+    @pytest.mark.skipif(platform.system() == "Darwin", reason="OS specific test")
+    def test_notMacOsKeys(self):
+        Key.enter
+        Key.insert
+        Key.menu
+        Key.num_lock
+        Key.pause
+        Key.print_screen
+        Key.scroll_lock
+
+        assert Key.delete == PyHotKey.Key.delete
+        assert Key.backspace == PyHotKey.Key.backspace
+        assert Key.win == PyHotKey.Key.cmd
+
+    @pytest.mark.skipif(platform.system() != "Darwin", reason="OS specific test")
+    def test_macOsKeys(self):
+        Key.cmd
+        Key.cmd_r
+
+        assert Key.delete == PyHotKey.Key.backspace
+        assert Key.option == PyHotKey.Key.alt
+        assert Key.option_r == PyHotKey.Key.alt_r
+        assert Key.return_r == PyHotKey.Key.enter

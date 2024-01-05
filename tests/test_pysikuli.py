@@ -3,6 +3,13 @@ import pytest
 from ..src import pysikuli as sik
 
 
+@pytest.fixture()
+def test_setup():
+    sik.config.MOUSE_MOVE_DURATION = 0
+    sik.config.MOUSE_MOVE_STEPS = 0
+
+
+@pytest.mark.usefixtures("test_setup")
 class TestPysikuli:
     def test_accessibleNames(self):
         # Check that all the functions are defined.
@@ -33,11 +40,11 @@ class TestPysikuli:
         sik.activateWindow
         sik.getWindowRegion
         sik.minimizeWindow
-        sik.unminimizeWindow
+        sik.maximizeWindow
 
         # utils API
         sik.Key
-        sik.Config
+        sik.config
         sik.Region
         sik.MONITOR_REGION
         sik.MONITOR_RESOLUTION
@@ -61,12 +68,16 @@ class TestPysikuli:
         test_loc = (500, 500)
         test_interrupt_offset = 100
         sik.mouseMove(test_loc)
-        sik._getRegion(sik._REGION_FORMAT, 0.5, test_interrupt_offset)
+        sik._getRegion(sik._REG_FORMAT, 0.5, test_interrupt_offset)
         captured_reg = sik.pasteFromClip()
-        expected_reg = f"{test_loc[0]}, {test_loc[1]}, {test_loc[0] + test_interrupt_offset}, {test_loc[1] + test_interrupt_offset}"
+        expected_reg = (
+            f"{test_loc[0]}, "
+            f"{test_loc[1]}, "
+            f"{test_loc[0] + test_interrupt_offset}, "
+            f"{test_loc[1] + test_interrupt_offset}"
+        )
 
         assert captured_reg == expected_reg
-        assert sik.getRegion
 
     def test_exist_docstring(self):
         assert sik.exist.__doc__ == sik._main._exist.__doc__

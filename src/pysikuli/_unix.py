@@ -1,7 +1,6 @@
 import re
+
 from subprocess import run
-from Xlib import display
-from Xlib.ext import randr
 
 
 def _copy(text: str):
@@ -16,21 +15,24 @@ def _paste():
     return run(["xsel", "-b"], capture_output=True, encoding="utf-8").stdout
 
 
-def _apt_pkgs_installation_check(required_pkgs_name: tuple or list):
+def _apt_pkgs_installation_check(required_pkgs_name: tuple[str] or list):
     installed_pkgs = run(
         ["apt", "list", "--installed"],
         capture_output=True,
         encoding="utf-8",
     ).stdout
 
+    # prepare pattern from required pakages for re search
     pattern = b"\n" + required_pkgs_name[0].encode("utf-8") + b"/"
     for x in range(1, len(required_pkgs_name)):
         pattern += b"|\n" + required_pkgs_name[x].encode("utf-8") + b"/"
 
+    # get and prepare found pakages for re search
     found_pkgs = re.findall(pattern, installed_pkgs.encode("utf-8"))
     format_required_pkgs_name = [
         b"\n" + x.encode("utf-8") + b"/" for x in required_pkgs_name
     ]
+
     missing_pkgs = set(format_required_pkgs_name).symmetric_difference(set(found_pkgs))
 
     if missing_pkgs == set():
@@ -45,34 +47,13 @@ def _apt_pkgs_installation_check(required_pkgs_name: tuple or list):
         )
 
 
+# NOTE depricated
 def _getRefreshRate():
-    d = display.Display()
-    default_screen = d.get_default_screen()
-    info = d.screen(default_screen)
-
-    resources = randr.get_screen_resources(info.root)
-    active_modes = set()
-    for crtc in resources.crtcs:
-        crtc_info = randr.get_crtc_info(info.root, crtc, resources.config_timestamp)
-        if crtc_info.mode:
-            active_modes.add(crtc_info.mode)
-
-    for mode in resources.modes:
-        if mode.id in active_modes:
-            return int(mode.dot_clock / (mode.h_total * mode.v_total))
-
-
-def _activateWindow(app_name: str):
-    raise NotImplementedError()
-
-
-def _getWindowRegion(app_name: str):
-    raise NotImplementedError()
-
-
-def _minimizeWindow(app_name: str):
-    raise NotImplementedError()
-
-
-def _unminimizeWindow(app_name: str):
-    raise NotImplementedError()
+    output = run(
+        ["xrandr"],
+        capture_output=True,
+        encoding="utf-8",
+    ).stdout
+    current_refrash_rate = re.findall(".{6}\*", output)[0]
+    current_refrash_rate = re.sub("\..+", "", current_refrash_rate)
+    return int(current_refrash_rate)

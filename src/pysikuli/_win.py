@@ -3,9 +3,11 @@ try:
 except:
     raise ImportError("Please install win32gui")
 
+import pyperclip
 import logging
 
 
+# NOTE depricated
 class ActiveWindow:
     final_hwnd = 0
 
@@ -22,24 +24,15 @@ class ActiveWindow:
         w32.SetForegroundWindow(self.final_hwnd)
 
 
-def _getRefreshRate():
-    # TODO: figure out how to finished and implement this function
-    # https://stackoverflow.com/questions/1225057/how-can-i-determine-the-monitor-refresh-rate
-    pass
+def _copy(text):
+    return pyperclip.copy(text)
 
 
+def _paste():
+    return pyperclip.paste()
+
+
+# NOTE depricated
 def _activateWindow(app_name: str):
     ActiveWindow().set_foreground(app_name)
     logging.debug("{0} activated".format(app_name))
-
-
-def _getWindowRegion(app_name: str):
-    raise NotImplementedError()
-
-
-def _minimizeWindow(app_name: str):
-    raise NotImplementedError()
-
-
-def _unminimizeWindow(app_name: str):
-    raise NotImplementedError()
