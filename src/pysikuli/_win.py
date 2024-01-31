@@ -1,10 +1,11 @@
+import logging
+
 try:
     import win32gui as w32
 except:
     raise ImportError("Please install win32gui")
 
 import pyperclip
-import logging
 
 
 # NOTE depricated

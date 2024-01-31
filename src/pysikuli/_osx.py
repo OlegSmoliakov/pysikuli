@@ -1,8 +1,10 @@
-from AppKit import NSScreen
-import subprocess
-import pyperclip
-import logging
 import re
+import subprocess
+import logging
+
+import pyperclip
+
+from AppKit import NSScreen
 
 
 # NOTE depricated

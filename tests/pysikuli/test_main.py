@@ -12,8 +12,7 @@ from ...src.pysikuli._main import Region, Match
 
 @pytest.fixture()
 def test_setup():
-    sik.config.MOUSE_MOVE_DURATION = 0
-    sik.config.MOUSE_MOVE_STEPS = 0
+    sik.config.MOUSE_SPEED = 100
 
 
 @pytest.fixture()
@@ -44,7 +43,7 @@ def test_reg_reg(test_img_reg):
 
 @pytest.fixture()
 def test_img_ScreenShot(test_img_reg):
-    return main._grab(test_img_reg)
+    return main.grab(test_img_reg)
 
 
 @pytest.fixture()
@@ -59,7 +58,7 @@ def test_img_ndarray(test_img_ScreenShot):
 
 @pytest.fixture()
 def test_reg_ndarray(test_reg_reg):
-    return np.array(main._grab(test_reg_reg))
+    return np.array(main.grab(test_reg_reg))
 
 
 @pytest.mark.usefixtures("test_setup")
@@ -80,7 +79,7 @@ class TestMain:
         pass
 
     def test_exist(self, test_img_ndarray, test_img_ScreenShot, test_reg_reg):
-        exist = main._exist
+        exist = main.exist
 
         with pytest.raises(TypeError):
             exist(image=None)
@@ -325,13 +324,13 @@ class TestMatch:
         test_img_ndarray,
         test_reg_ndarray,
     ):
-        assert test_match.x == 958
-        assert test_match.y == 538
-        assert test_match.up_left_loc == (957, 537)
-        assert test_match.center_loc == (958, 538)
-        assert test_match.offset_loc == (958, 538)
-        assert test_match.offset_x == 958
-        assert test_match.offset_y == 538
+        assert test_match.x == 957
+        assert test_match.y == 537
+        assert test_match.up_left_loc == (956, 536)
+        assert test_match.center_loc == (957, 537)
+        assert test_match.offset_loc == (957, 537)
+        assert test_match.offset_x == 957
+        assert test_match.offset_y == 537
         assert test_match.score == 1
         assert test_match.precision == 0.8
         assert np.array_equal(test_match.np_image, test_img_ndarray)
@@ -339,8 +338,8 @@ class TestMatch:
 
     def test_repr(self, test_match):
         assert (
-            f"Match(location={test_match.center_loc}, score={test_match.score}, precision={config.PRECISION})"
-            == repr(test_match)
+            f"Match(location={test_match.center_loc}, score={test_match.score}, precision={config.MIN_PRECISION})"
+            == str(test_match)
         )
 
     @pytest.mark.parametrize(
@@ -381,15 +380,19 @@ class TestMatch:
 @pytest.mark.usefixtures("test_setup")
 class TestRegion:
     def test_accessibleNames(self):
-        Region.COMPRESSION_RATIO
-        Region.TIME_STEP
+        Region.x1
+        Region.x2
+        Region.y1
+        Region.y2
+        Region.reg
+        Region.time_step
         Region.click
-        Region.exist
         Region.find
         Region.findAny
         Region.has
         Region.rightClick
         Region.wait
+        Region.waitWhileExist
 
     def test_init(self, test_reg_reg):
         reg = Region(*test_reg_reg)

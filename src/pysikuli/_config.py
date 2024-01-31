@@ -1,8 +1,10 @@
 # module for storing pysikuli global variables with user access
-import pymsgbox as pmb
-import pymonctl as pmc
-import platform
+
 import os
+import platform
+
+import pymonctl as pmc
+import pymsgbox as pmb
 
 from pynput.keyboard import Key
 from pynput.mouse import Button
@@ -47,7 +49,7 @@ def getDefaultFailsafeHotkey(OSX):
     if OSX:
         return [Key.option, Key.shift, "c"]
     else:
-        return [Key.ctrl, Key.alt, "k"]
+        return [Key.ctrl, Key.alt, "z"]
 
 
 class Config:
@@ -56,6 +58,9 @@ class Config:
     # platform selection
     OSX, WIN, UNIX = getOS()
     platformModule = getPlatformModule(OSX, WIN, UNIX)
+
+    # if the time is less than this value, the sleep time isn't accurate enough
+    MIN_SLEEP_TIME = 0.02
 
     # The number of seconds to pause after EVERY public action function call. Useful for debugging:
     PAUSE_BETWEEN_ACTION = 0
@@ -83,8 +88,10 @@ class Config:
     # This option almost doubles the speed by using compressed images in image recognition,
     # but degrades unambiguous image recognition.
     # Use this parameter as a compression multiplier, for instance:
-    # if the value is 1 - the image size doesn't change (width / 1 and height / 1)
-    # if the value is 2 - the image will become x4 times smaller, (width / 2 and height / 2).
+    # If the value is 1 - the image size doesn't change (width / 1 and height / 1)
+    # If the value is 2 - the image will become x4 times smaller, (width / 2 and height / 2).
+    # If the value greater than 4, the speed will increase slightly.
+    # Divider must be positive and can be float
     COMPRESSION_RATIO = 2
 
     # This parameter increases speed by about 30%, but degrades unambiguous image recognition
@@ -172,7 +179,7 @@ class Config:
     # Constants for the mouse button names:
     MOUSE_PRIMARY_BUTTON = Button.left
     MOUSE_SECONDARY_BUTTON = Button.right
-    MOUSE_MOVE_SPEED = 1
+    MOUSE_SPEED = 1
 
     # Constants for tools module
     SOUND_ON = True
@@ -187,8 +194,7 @@ class Config:
         "PAUSE_BETWEEN_ACTION": 0.5,
         "TIME_STEP": round(1 / REFRESH_RATE, 5),
         "WAIT_WINDOW_ACTIVATION": True,
-        "MOUSE_MOVE_DURATION": 0.1,
-        "MOUSE_MOVE_STEPS": min(_MONITOR_RESOLUTION) / 4,
+        "MOUSE_SPEED": 1,
     }
 
     @property
@@ -215,7 +221,7 @@ class Config:
         self._TEXT_ENTRY_FONT_SIZE = 12
 
         self._DEBUG = False
-
+        self._MOUSE_SPEED = 1
         self._FAILSAFE_HOTKEY = None
 
 

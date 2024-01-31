@@ -10,7 +10,7 @@ class TestConfig:
         config.COMPRESSION_RATIO
         config.GRAYSCALE
         config.MAX_SEARCH_TIME
-        config.PRECISION
+        config.MIN_PRECISION
         config.TIME_STEP
         config.FAILSAFE
         config.FAILSAFE_HOTKEY

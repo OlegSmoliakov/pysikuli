@@ -57,6 +57,8 @@ def test_getColor():
 
 
 def test_run():
+    sik.config.MOUSE_SPEED = 2
+
     pic_1 = "pics/1.png"
     pic_8 = "pics/8.png"
     pic_plus = "pics/plus.png"
@@ -72,3 +74,14 @@ def test_run():
     sik.click(pic_plus)
     sik.click(pic_1)
     sik.click(pic_equal)
+
+    sik.click((200, 200)), sik.sleep(0.5)
+    sik.activateWindow("Calculator"), sik.sleep(0.5)
+
+    sik.click((200, 200)), sik.sleep(0.5)
+    loc_equal = sik.find(pic_equal).center_loc
+    sik.activateWindowAt(loc_equal), sik.sleep(0.5)
+
+    sik.click((200, 200)), sik.sleep(0.5)
+    sik.mouseMove(loc_equal)
+    sik.activateWindowUnderMouse(), sik.sleep(0.5)

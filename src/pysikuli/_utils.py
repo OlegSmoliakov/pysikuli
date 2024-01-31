@@ -1,9 +1,10 @@
-import time
 import os
 import re
+import time
 
 from send2trash import send2trash
 from gitignore_parser import parse_gitignore as pgi
+
 from ._main import getPixel, copyToClip, mousePosition, mouseMoveRelative
 from ._config import config
 

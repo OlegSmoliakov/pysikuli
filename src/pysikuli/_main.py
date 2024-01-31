@@ -1,19 +1,21 @@
-import pywinctl as pwc
-import pymsgbox as pmb
-import numpy as np
 import functools
 import logging
 import math
-import time
-import cv2
 import os
+import time
+
+import cv2
+import numpy as np
+import pymsgbox as pmb
+import pywinctl as pwc
+
+from mss.screenshot import ScreenShot
+from mss import mss, tools
+from PyHotKey import keyboard_manager as keyboard
+from pynput.mouse import Controller as mouse_manager
+from send2trash import send2trash
 
 from ._config import config, Key, Button, _MONITOR_REGION
-from pynput.mouse import Controller as mouse_manager
-from PyHotKey import keyboard_manager as keyboard
-from mss.screenshot import ScreenShot
-from send2trash import send2trash
-from mss import mss, tools
 
 mouse = mouse_manager()
 
@@ -309,10 +311,10 @@ class Match(Region):
         return "{}({})".format(type(self).__name__, ", ".join(args))
 
     def __eq__(self, other):
-        return repr(self) == other
+        return str(self) == other
 
     def __ne__(self, other):
-        return repr(self) != other
+        return str(self) != other
 
     def _showImageCV2(self, window_name, np_img):
         cv2.namedWindow(window_name, cv2.WINDOW_NORMAL)
@@ -349,6 +351,7 @@ class Location:
 
 
 def grab(region: tuple):
+    region = _regionValidation(region)
     with mss() as sct:
         return sct.grab(region)
 
@@ -402,9 +405,14 @@ def waitWhileExist(
             pixel_colors=pixel_colors,
         )
         if _match == None:
+            logging.info(f"waitWhileExist finished due to the pic disappearing")
             return True
         time.sleep(time_step)
-    return None
+
+    logging.info(
+        f"waitWhileExist finished due to MAX_SEARCH_TIME = {config.MAX_SEARCH_TIME} limit"
+    )
+    return False
 
 
 def find(
@@ -460,13 +468,13 @@ def findAny(
     return matches
 
 
-def _imgDownsize(img: np.ndarray, multiplier):
+def _imgDownsize(img: np.ndarray, divider):
     """
-    multiplier must be even [2-8]
-    does not make sense with a multiplier greater than 4 because of the small increase in speed.
+    divider must be positive
+    does not make sense with a divider greater than 4 because of the small speed increase.
     """
-    width = int(img.shape[1] / multiplier)
-    height = int(img.shape[0] / multiplier)
+    width = int(img.shape[1] / divider)
+    height = int(img.shape[0] / divider)
     dsize = (width, height)
 
     return cv2.resize(img, dsize, interpolation=cv2.INTER_AREA)
@@ -610,7 +618,7 @@ def _imageToNumpyArray(image):
         )
 
 
-def _matchTemplate(
+def _matchProcessing(
     image,
     region=None,
     grayscale: bool = None,
@@ -708,7 +716,7 @@ def exist(
         img_height,
         tuple_region,
         precision,
-    ) = _matchTemplate(
+    ) = _matchProcessing(
         image=image,
         region=region,
         grayscale=grayscale,
@@ -775,7 +783,9 @@ def existCount(
     optionally an output image with all the occurances boxed with a red outline.
     """
 
-    match_result = _matchTemplate(
+    precision = precision if precision is not None else config.MIN_PRECISION
+
+    match_result = _matchProcessing(
         image=image,
         region=region,
         grayscale=grayscale,
@@ -794,10 +804,79 @@ def existCount(
     for pt in zip(*location[::-1]):  # Swap columns and rows
         x = int(pt[0] * config.COMPRESSION_RATIO + half_width)
         y = int(pt[1] * config.COMPRESSION_RATIO + half_height)
+
+        if count:
+            prev_loc = match_dict[count - 1]
+            if (
+                x - prev_loc[0] < match_result["img_width"]
+                and y - prev_loc[1] < match_result["img_height"]
+            ):
+                continue
+
         match_dict[count] = (x, y)
         count += 1
 
     return match_dict
+
+
+def imageExistFromFolder(path, region=None, grayscale=None, precision=None):
+    """
+    Get all screens on the provided folder and search them on screen.
+
+    input :
+    path : path of the folder with the images to be searched on screen like pics/
+    precision : the higher, the lesser tolerant and fewer false positives are found default is 0.8
+
+    returns :
+    A dictionary where the key is the path to image file and the value is the position where was found.
+    """
+    imagesPos = {}
+    valid_images = [".jpg", ".gif", ".png", ".jpeg"]
+    files = [
+        f
+        for f in os.listdir(path)
+        if os.path.isfile(os.path.join(path, f))
+        and os.path.splitext(f)[1].lower() in valid_images
+    ]
+    for file in files:
+        full_path = os.path.join(path, file)
+        match = exist(
+            image=full_path,
+            region=region,
+            grayscale=grayscale,
+            precision=precision,
+        )
+        pos = None
+        if match != None:
+            pos = match.center_loc
+        imagesPos[full_path] = pos
+    return imagesPos
+
+
+def saveNumpyImg(image: np.ndarray, name):
+    "image: np.ndarray"
+    if name:
+        output = f"{name}_{time.strftime('%H_%M_%S')}.png"
+    else:
+        output = f"image_{time.strftime('%H_%M_%S')}.png"
+    cv2.imwrite(output, image)
+    path = os.path.join(os.getcwd(), output)
+    print(f"Image {path} successfully saved")
+
+
+def saveScreenshot(region=None):
+    region = _regionNormalization(region)
+    region = _regionValidation(region)
+    output = f"Screenshot_{time.strftime('%H_%M_%S')}.png"
+    with mss() as sct:
+        if not region:
+            sct.shot(output=output)
+        else:
+            screenshot = sct.grab(region)
+            tools.to_png(screenshot.rgb, screenshot.size, output=output)
+    path = os.path.join(os.getcwd(), output)
+    print(f"Image '{path}' successfully saved")
+    return path
 
 
 def getPixel(x, y, np_region: np.ndarray = None):
@@ -822,8 +901,8 @@ def pressedKeys():
 
 def hotkey(*keys, interval=0.0):
     if config.OSX:
-        if interval < 0.02:
-            interval = 0.02
+        if interval < config.MIN_SLEEP_TIME:
+            interval = config.MIN_SLEEP_TIME
 
     logging.debug(f"{keys}, interval: {interval}")
 
@@ -845,7 +924,7 @@ def hotkey(*keys, interval=0.0):
 
 
 def tap(key, presses=1, interval=0.0, time_step: float = None):
-    """tap function for tapping
+    """taps a single key on keyboard
 
     Args:
         key (_type_): _description_
@@ -855,8 +934,8 @@ def tap(key, presses=1, interval=0.0, time_step: float = None):
     """
     time_step = time_step if time_step is not None else config.TIME_STEP
 
-    if config.OSX and interval < 0.02:
-        interval = 0.02
+    if config.OSX and interval < config.MIN_SLEEP_TIME:
+        interval = config.MIN_SLEEP_TIME
     for x in range(presses):
         logging.debug(f"tap: {key}")
         logging.debug(keyboard.pressed_keys)
@@ -880,7 +959,7 @@ def keyDown(key):
 @failSafeCheck
 def write(message, time_step: float = None):
     time_step = time_step if time_step is not None else config.TIME_STEP
-    if time_step > 0:
+    if time_step > config.MIN_SLEEP_TIME:
         for sign in message:
             keyboard.tap(sign)
             time.sleep(time_step)
@@ -945,11 +1024,11 @@ def mouseSmoothMove(
         return vec2[0] - vec1[0], vec2[1] - vec1[1]
 
     interruptions = 0
-
-    speed = speed if speed is not None else config.MOUSE_MOVE_SPEED
     speed_multiplier = 1000
+
+    speed = speed if speed is not None else config.MOUSE_SPEED
     speed *= speed_multiplier
-    if speed < 0:
+    if speed <= 0:
         speed = 1
 
     start_x, start_y = mouse.position
@@ -1076,7 +1155,7 @@ def mouseUp(
             precision=precision,
         )
         mouseSmoothMove(destination_loc=(x, y), speed=speed)
-    mousePress(button)
+    mouseRelease(button)
 
 
 def click(
@@ -1101,10 +1180,11 @@ def click(
     :param time_step: The location or picture to click.
     :type time_step: float
     """
+
     button = button if button is not None else config.MOUSE_PRIMARY_BUTTON
 
-    if config.OSX and interval < 0.02:
-        interval = 0.02
+    if config.OSX and interval < config.MIN_SLEEP_TIME:
+        interval = config.MIN_SLEEP_TIME
 
     if loc_or_pic:
         x, y = _coordinateNormalization(
@@ -1124,6 +1204,9 @@ def click(
 
         time.sleep(interval)
 
+        if config.OSX:
+            time.sleep(0.05)
+
     for _ in range(clicks):
         _failSafeCheck()
         mouse.click(button, 1)
@@ -1132,7 +1215,7 @@ def click(
 
 
 def rightClick(
-    loc_or_pic,
+    loc_or_pic=None,
     region=None,
     max_search_time: float = None,
     time_step: float = None,
@@ -1196,70 +1279,10 @@ def dragDrop(
     if not start_location:
         start_location = mouse.position
 
-    mouseSmoothMove(destination_loc=start_location)
+    mouseSmoothMove(destination_loc=start_location, speed=speed)
     mousePress(button)
     mouseSmoothMove(destination_loc=destination_loc, speed=speed)
-    mousePress(button)
-
-
-def saveNumpyImg(image: np.ndarray, name):
-    "image: np.ndarray"
-    if name:
-        output = f"{name}_{time.strftime('%H_%M_%S')}.png"
-    else:
-        output = f"image_{time.strftime('%H_%M_%S')}.png"
-    cv2.imwrite(output, image)
-    path = os.path.join(os.getcwd(), output)
-    print(f"Image {path} successfully saved")
-
-
-def saveScreenshot(region=None):
-    region = _regionNormalization(region)
-    region = _regionValidation(region)
-    output = f"Screenshot_{time.strftime('%H_%M_%S')}.png"
-    with mss() as sct:
-        if not region:
-            sct.shot(output=output)
-        else:
-            screenshot = sct.grab(region)
-            tools.to_png(screenshot.rgb, screenshot.size, output=output)
-    path = os.path.join(os.getcwd(), output)
-    print(f"Image '{path}' successfully saved")
-    return path
-
-
-def imageExistFromFolder(path, region=None, grayscale=None, precision=None):
-    """
-    Get all screens on the provided folder and search them on screen.
-
-    input :
-    path : path of the folder with the images to be searched on screen like pics/
-    precision : the higher, the lesser tolerant and fewer false positives are found default is 0.8
-
-    returns :
-    A dictionary where the key is the path to image file and the value is the position where was found.
-    """
-    imagesPos = {}
-    valid_images = [".jpg", ".gif", ".png", ".jpeg"]
-    files = [
-        f
-        for f in os.listdir(path)
-        if os.path.isfile(os.path.join(path, f))
-        and os.path.splitext(f)[1].lower() in valid_images
-    ]
-    for file in files:
-        full_path = os.path.join(path, file)
-        match = exist(
-            image=full_path,
-            region=region,
-            grayscale=grayscale,
-            precision=precision,
-        )
-        pos = None
-        if match != None:
-            pos = match.center_loc
-        imagesPos[full_path] = pos
-    return imagesPos
+    mouseRelease(button)
 
 
 def titleCheck(wrappedFunction):
@@ -1458,4 +1481,7 @@ def popupConfirm(
 @failSafeCheck
 def deleteFile(file_path):
     logging.debug(f"deleting {file_path}")
-    send2trash(file_path)
+    try:
+        send2trash(file_path)
+    except:
+        os.remove(file_path)

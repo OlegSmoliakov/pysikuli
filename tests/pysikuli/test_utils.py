@@ -40,7 +40,7 @@ def getLocationDuration(testLoc):
     sik.config.SOUND_ON = True
     sik.mouseMove(testLoc)
     start_time = time.time()
-    utils._getLocation(0.02)
+    utils.getLocation(0.02)
     duration = time.time() - start_time
     return duration
 
@@ -65,7 +65,7 @@ def soundOff():
 class TestUtils:
     def test_getLocation_clipboard(self, testLoc):
         sik.mouseMove(testLoc)
-        utils._getLocation(0.02)
+        utils.getLocation(0.02)
         assert sik.pasteFromClip() == str(testLoc)
 
     def test_getLocation_SOUND_OFF(
@@ -73,7 +73,7 @@ class TestUtils:
     ):
         sik.mouseMove(testLoc)
         start_time = time.time()
-        utils._getLocation(0.02)
+        utils.getLocation(0.02)
         duration_sound_off = time.time() - start_time
         assert duration_sound_off <= getLocationDuration - getLocationSoundDuration
 

@@ -5,8 +5,7 @@ from ..src import pysikuli as sik
 
 @pytest.fixture()
 def test_setup():
-    sik.config.MOUSE_MOVE_DURATION = 0
-    sik.config.MOUSE_MOVE_STEPS = 0
+    sik.config.MOUSE_SPEED = 1000
 
 
 @pytest.mark.usefixtures("test_setup")
@@ -30,13 +29,13 @@ class TestPysikuli:
         sik.mouseDown
         sik.mouseUp
         sik.mouseMove
-        sik.mouseMoveRealive
+        sik.mouseMoveRelative
+        sik.mousePosition
         sik.dragDrop
 
         # The functions implemented in the platform-specific modules should also show up in the sik namespace:
-        # sik.position
-        # sik.scroll
-        # sik.hscroll
+        sik.scroll
+        sik.hscroll
         sik.activateWindow
         sik.getWindowRegion
         sik.minimizeWindow
@@ -51,6 +50,7 @@ class TestPysikuli:
         sik.saveScreenshot
         sik.saveNumpyImg
         sik.deleteFile
+        sik.cleanupPics
 
         # screenshot-related API
         sik.find
@@ -78,6 +78,3 @@ class TestPysikuli:
         )
 
         assert captured_reg == expected_reg
-
-    def test_exist_docstring(self):
-        assert sik.exist.__doc__ == sik._main._exist.__doc__
