@@ -5,7 +5,12 @@ Fast cross-platform python module for desktop gui automation
 from time import sleep
 
 # import config file constants and classes
-from ._config import Key, Button, config
+from ._config import Button, config
+
+if config.OSX:
+    from ._osx import MacKey as Key
+else:
+    from ._win import WinKey as Key
 
 MONITOR_REGION = config.MONITOR_REGION
 MONITOR_RESOLUTION = config.MONITOR_RESOLUTION
@@ -52,14 +57,14 @@ from ._main import (
 
 # import Screenshot-related functions
 from ._main import (
-    grab,
+    exist,
+    existAny,
+    existCount,
+    existFromFolder,
     find,
-    findAny,
+    grab,
     getPixel,
     wait,
-    exist,
-    imageExistFromFolder,
-    existCount,
     waitWhileExist,
 )
 
@@ -98,7 +103,7 @@ from ._main import (
 
 
 __author__ = "Oleg Smoliakov"
-__version__ = "0.0.13"
+__version__ = "0.0.15"
 
 _REG_FORMAT = "x1y1x2y2"
 

@@ -6,7 +6,7 @@ from send2trash import send2trash
 from gitignore_parser import parse_gitignore as pgi
 
 from ._main import getPixel, copyToClip, mousePosition, mouseMoveRelative
-from ._config import config
+from ._config import config, _SUPPORTED_PIC_FORMATS
 
 
 def _setPlaysound():
@@ -36,7 +36,7 @@ def getLocation(interval=0.5):
 
     while True:
         x, y = mousePosition()
-        text = f"Current XY: [{x}, {y}]  RGB: {getPixel(x, y)}"
+        text = f"Current XY: [{x}, {y}]  RGB: {getPixel((x, y))}"
         print(text)
 
         check_3[0] = check_3[1]
@@ -121,7 +121,7 @@ def _getRegion(reg_format, interval=0.5, test_interrupt_offset=0):
     else:
         raise ValueError("wrong reg_format")
 
-    copyToClip(f"{reg[0]}, {reg[1]}, {reg[2]}, {reg[3]}")
+    copyToClip(f"Region({reg[0]}, {reg[1]}, {reg[2]}, {reg[3]})")
     print(
         f"Region = ({reg[0]}, {reg[1]}, {reg[2]}, {reg[3]}), already copied to the clipboard"
     )
@@ -134,10 +134,15 @@ def cleanupPics(pics_folder_path):
     pics_folder_name = os.path.basename(pics_folder_path)
     root_path = os.getcwd()
     ignore = pgi(os.path.join(root_path, ".gitignore"))
-    ignore_exceptions = ["draft.py"]
+    ignore_list = [".git", ".github"]
+
+    formats = ""
+    for format in _SUPPORTED_PIC_FORMATS:
+        formats += f"{format}|"
+    formats = formats[:-1]
 
     def isIgnored(file):
-        return ignore(file) if file not in ignore_exceptions else False
+        return ignore(file) if file not in ignore_list else True
 
     def isDir(file_path):
         return os.path.isdir(file_path) and "__" not in os.path.basename(file_path)
@@ -152,10 +157,12 @@ def cleanupPics(pics_folder_path):
         with open(file_path) as f:
             code = f.read()
 
-        matches = re.findall(f"({pics_folder_name}[\\\\\/]\S*\.)(png|jpg)", code)
+        #                     # (pics/image_name.png)   # (pics[\\\\\/]\S*.)(png|jpg|tif)
+        matches = re.findall(rf"({pics_folder_name}[\\\\\/]\S*\.)({formats})", code)
 
         for match in matches:
             match_name = match[0] + match[1]
+            match_name = os.path.normpath(match_name)
             match_path = os.path.join(root_path, match_name)
             found_paths.append(match_path)
             found_names.append(match_name)
@@ -178,11 +185,17 @@ def cleanupPics(pics_folder_path):
 
         return found_paths, found_names
 
-    def getUnusedPics():
+    def getStoredPics():
         stored = os.listdir(pics_folder_path)
+        stored = [
+            file_name for file_name in stored if re.search(f".{formats}", file_name)
+        ]
         stored = [os.path.join(pics_folder_path, file_name) for file_name in stored]
+        return stored
+
+    def getUnusedPics():
+        stored = getStoredPics()
         used, _ = findAllPicsPathsInProject(root_path)
-        # print(stored, "\n\n", used)
         return set(stored) - set(used)
 
     def prompt_user(pic: str):

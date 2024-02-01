@@ -15,6 +15,16 @@ _MONITOR_RESOLUTION = (
     _MONITOR_REGION[2],
     _MONITOR_REGION[3],
 )
+_SUPPORTED_PIC_FORMATS = [
+    "bmp",
+    "jfif",
+    "jpeg",
+    "jpe",
+    "jpg",
+    "png",
+    "tiff",
+    "tif",
+]
 
 
 def getOS():
@@ -47,7 +57,7 @@ def getPlatformModule(OSX, WIN, UNIX):
 
 def getDefaultFailsafeHotkey(OSX):
     if OSX:
-        return [Key.option, Key.shift, "c"]
+        return [Key.alt, Key.shift, "c"]
     else:
         return [Key.ctrl, Key.alt, "z"]
 
@@ -223,76 +233,6 @@ class Config:
         self._DEBUG = False
         self._MOUSE_SPEED = 1
         self._FAILSAFE_HOTKEY = None
-
-
-class Key:
-    alt = Key.alt
-    alt_r = Key.alt_r
-    alt_gr = Key.alt_gr
-    caps_lock = Key.caps_lock
-    ctrl = Key.ctrl
-    ctrl_r = Key.ctrl_r
-    down = Key.down
-    end = Key.end
-    esc = Key.esc
-    f1 = Key.f1
-    f2 = Key.f2
-    f3 = Key.f3
-    f4 = Key.f4
-    f5 = Key.f5
-    f6 = Key.f6
-    f7 = Key.f7
-    f8 = Key.f8
-    f9 = Key.f9
-    f10 = Key.f10
-    f11 = Key.f11
-    f12 = Key.f12
-    f13 = Key.f13
-    f14 = Key.f14
-    f15 = Key.f15
-    f16 = Key.f16
-    f17 = Key.f17
-    f18 = Key.f18
-    f19 = Key.f19
-    f20 = Key.f20
-    home = Key.home
-    left = Key.left
-    page_down = Key.page_down
-    page_up = Key.page_up
-    right = Key.right
-    shift = Key.shift
-    shift_r = Key.shift_r
-    space = Key.space
-    tab = Key.tab
-    up = Key.up
-
-    media_play_pause = Key.media_play_pause
-    media_volume_mute = Key.media_volume_mute
-    media_volume_down = Key.media_volume_down
-    media_volume_up = Key.media_volume_up
-    media_previous = Key.media_previous
-    media_next = Key.media_next
-
-    if Config.OSX:
-        cmd = Key.cmd
-        cmd_r = Key.cmd_r
-        delete = Key.backspace
-
-        option = Key.alt
-        option_r = Key.alt_r
-        return_r = Key.enter
-    else:
-        win = Key.cmd
-        enter = Key.enter
-        delete = Key.delete
-        backspace = Key.backspace
-
-        insert = Key.insert
-        menu = Key.menu
-        num_lock = Key.num_lock
-        pause = Key.pause
-        print_screen = Key.print_screen
-        scroll_lock = Key.scroll_lock
 
 
 config = Config()

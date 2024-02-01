@@ -15,7 +15,7 @@ from PyHotKey import keyboard_manager as keyboard
 from pynput.mouse import Controller as mouse_manager
 from send2trash import send2trash
 
-from ._config import config, Key, Button, _MONITOR_REGION
+from ._config import config, Key, Button, _MONITOR_REGION, _SUPPORTED_PIC_FORMATS
 
 mouse = mouse_manager()
 
@@ -70,7 +70,7 @@ def _failSafeCheck():
         if hotkeyCheck or mouseCheck:
             raise FailSafeException(
                 f"{hotkeyCheck or mouseCheck}\nTo disable the fail-safe, "
-                "set pysikuli.FAILSAFE to False. DISABLING FAIL-SAFE IS "
+                "set pysikuli.config.FAILSAFE to False. DISABLING FAIL-SAFE IS "
                 "NOT RECOMMENDED."
             )
 
@@ -246,13 +246,13 @@ class Region(object):
             pixel_colors=pixel_colors,
         )
 
-    def findAny(
+    def existAny(
         self,
         image,
         grayscale: bool = None,
         precision: float = None,
     ):
-        return findAny(
+        return existAny(
             image=image, region=self.reg, grayscale=grayscale, precision=precision
         )
 
@@ -297,7 +297,7 @@ class Match(Region):
         self.precision = precision
         self.np_image = np_image
         self.np_region = np_region
-        self.center_pixel = getPixel(*relative_loc_center, np_region=np_region)
+        self.center_pixel = getPixel(relative_loc_center, np_region)
 
         # q, esc, space, backspace
         self.exit_keys_cv2 = [113, 27, 32, 8]
@@ -341,11 +341,13 @@ class Match(Region):
 
 
 class Picture:
+    # TODO
     def __init__():
         pass
 
 
 class Location:
+    # TODO
     def __init__():
         pass
 
@@ -442,30 +444,6 @@ def find(
             return _match
         time.sleep(time_step)
     return None
-
-
-def findAny(
-    image_list,
-    region=None,
-    grayscale: bool = None,
-    precision: float = None,
-    pixel_colors: tuple = None,
-):
-    region, tuple_region = _regionToNumpyArray(reg=region)
-    matches = []
-
-    for image in image_list:
-        match = exist(
-            image=image,
-            region=region,
-            grayscale=grayscale,
-            precision=precision,
-            pixel_colors=pixel_colors,
-            tuple_region=tuple_region,
-        )
-        if match:
-            matches.append(match)
-    return matches
 
 
 def _imgDownsize(img: np.ndarray, divider):
@@ -752,14 +730,65 @@ def exist(
         return None
     if not pixel_colors:
         return match_class
-    elif getPixel(*max_loc_rel_center, np_region=region_capture) == pixel_colors:
+    elif getPixel(max_loc_rel_center, region_capture) == pixel_colors:
         return match_class
 
 
-def _getCenterLoc(img_width, img_height, loc: tuple):
-    x = round(loc[0] + img_width / 2)
-    y = round(loc[1] + img_height / 2)
-    return x, y
+def existAny(
+    image_list,
+    region=None,
+    grayscale: bool = None,
+    precision: float = None,
+    pixel_colors: tuple = None,
+):
+    region, tuple_region = _regionToNumpyArray(reg=region)
+    matches = []
+
+    for image in image_list:
+        match = exist(
+            image=image,
+            region=region,
+            grayscale=grayscale,
+            precision=precision,
+            pixel_colors=pixel_colors,
+            tuple_region=tuple_region,
+        )
+        if match:
+            matches.append(match)
+    return matches
+
+
+def existFromFolder(path, region=None, grayscale=None, precision=None):
+    """
+    Get all screens on the provided folder and search them on screen.
+
+    input :
+    path : path of the folder with the images to be searched on screen like pics/
+    precision : the higher, the lesser tolerant and fewer false positives are found default is 0.8
+
+    returns :
+    A dictionary where the key is the path to image file and the value is the position where it was found.
+    """
+    imagesPos = {}
+    files = [
+        f
+        for f in os.listdir(path)
+        if os.path.isfile(os.path.join(path, f))
+        and os.path.splitext(f)[1].lower()[1:] in _SUPPORTED_PIC_FORMATS
+    ]
+    for file in files:
+        full_path = os.path.join(path, file)
+        match = exist(
+            image=full_path,
+            region=region,
+            grayscale=grayscale,
+            precision=precision,
+        )
+        pos = None
+        if match != None:
+            pos = match.center_loc
+        imagesPos[full_path] = pos
+    return imagesPos
 
 
 def existCount(
@@ -819,48 +848,33 @@ def existCount(
     return match_dict
 
 
-def imageExistFromFolder(path, region=None, grayscale=None, precision=None):
+def _getCenterLoc(img_width, img_height, loc: tuple):
+    x = round(loc[0] + img_width / 2)
+    y = round(loc[1] + img_height / 2)
+    return x, y
+
+
+def saveNumpyImg(image: np.ndarray, image_name: str = None, path: str = None):
+    """Save a numpy array into a png image in root directory
+
+    Args:
+        image (np.ndarray): the variable with pic, that you want to save
+        image_name (str): file's name
+        path (str): path where the pic will be saved
     """
-    Get all screens on the provided folder and search them on screen.
 
-    input :
-    path : path of the folder with the images to be searched on screen like pics/
-    precision : the higher, the lesser tolerant and fewer false positives are found default is 0.8
-
-    returns :
-    A dictionary where the key is the path to image file and the value is the position where was found.
-    """
-    imagesPos = {}
-    valid_images = [".jpg", ".gif", ".png", ".jpeg"]
-    files = [
-        f
-        for f in os.listdir(path)
-        if os.path.isfile(os.path.join(path, f))
-        and os.path.splitext(f)[1].lower() in valid_images
-    ]
-    for file in files:
-        full_path = os.path.join(path, file)
-        match = exist(
-            image=full_path,
-            region=region,
-            grayscale=grayscale,
-            precision=precision,
-        )
-        pos = None
-        if match != None:
-            pos = match.center_loc
-        imagesPos[full_path] = pos
-    return imagesPos
-
-
-def saveNumpyImg(image: np.ndarray, name):
-    "image: np.ndarray"
-    if name:
-        output = f"{name}_{time.strftime('%H_%M_%S')}.png"
+    if image_name:
+        output = f"{image_name}_{time.strftime('%H_%M_%S')}.png"
     else:
         output = f"image_{time.strftime('%H_%M_%S')}.png"
     cv2.imwrite(output, image)
-    path = os.path.join(os.getcwd(), output)
+
+    if path:
+        if not os.path.isdir(path):
+            raise FileExistsError(f"{path} doesn't exist")
+    else:
+        path = os.path.join(os.getcwd(), output)
+
     print(f"Image {path} successfully saved")
 
 
@@ -879,7 +893,8 @@ def saveScreenshot(region=None):
     return path
 
 
-def getPixel(x, y, np_region: np.ndarray = None):
+def getPixel(location, np_region: np.ndarray = None) -> tuple[int, int, int]:
+    x, y = location
     if np_region is None:
         reg = (x, y, x + 1, y + 1)
         np_region = grab(reg)
@@ -1005,7 +1020,7 @@ def hscroll(duration=0.1, speed=1):
 
 
 def vscroll(duration=0.1, speed=1):
-    scroll(duration, speed, 0)
+    scroll(duration, 0, speed)
 
 
 @failSafeCheck
@@ -1310,10 +1325,10 @@ def windowExist(window_title: str):
         logging.debug(f"window title isn't string: {window_title}")
         return None
     window_title = window_title.lower()
-    titles = pwc.getAllTitles()
+    titles = getAllWindowsTitle()
     titles_lower = [title.lower() for title in titles]
     for i in range(len(titles_lower)):
-        if window_title in titles_lower[i]:
+        if window_title == titles_lower[i]:
             title = titles[i]
             break
     if "title" in locals():
@@ -1322,7 +1337,12 @@ def windowExist(window_title: str):
 
 
 def getAllWindowsTitle():
-    return pwc.getAllTitles()
+    titles = pwc.getAllTitles()
+    if config.WIN:
+        titles = [title for title in titles if len(str(title)) >= 1]
+    titles = list(set(titles))
+    titles.sort()
+    return titles
 
 
 @titleCheck
@@ -1364,13 +1384,17 @@ def getWindowRegion(window_title: str):
     """
     get the region of a window by its name
     """
+    # NOTE: got these values on my laptop, may be different
+    x1_offset = 8
+    x2_offset = -8
+    y2_offset = -8
 
     windows = pwc.getWindowsWithTitle(window_title)
     return Region(
-        windows[0].bbox.left,
+        windows[0].bbox.left + x1_offset,
         windows[0].bbox.top,
-        windows[0].bbox.right,
-        windows[0].bbox.bottom,
+        windows[0].bbox.right + x2_offset,
+        windows[0].bbox.bottom + y2_offset,
     )
 
 
