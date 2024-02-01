@@ -1,4 +1,4 @@
-# pysikui
+# pysikuli
 Fast cross-platform python module for gui automation
 
 For macos:
