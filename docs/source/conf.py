@@ -7,7 +7,7 @@ copyright = "2024, OlegSmoliakov"
 author = "OlegSmoliakov"
 
 release = "0.0"
-version = "0.0.16"
+version = "0.0.17"
 
 # -- General configuration
 

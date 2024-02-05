@@ -103,7 +103,7 @@ from ._main import (
 
 
 __author__ = "Oleg Smoliakov"
-__version__ = "0.0.16"
+__version__ = "0.0.17"
 
 _REG_FORMAT = "x1y1x2y2"
 
