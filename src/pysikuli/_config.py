@@ -1,5 +1,3 @@
-# module for storing pysikuli global variables with user access
-
 import os
 import platform
 
@@ -63,23 +61,25 @@ def getDefaultFailsafeHotkey(OSX):
 
 
 class Config:
+    """
+    Class for storing pysikuli global variables with user acces
+    """
+
     # TODO: Sleep value should vary with the platform. http://stackoverflow.com/q/1133857
 
     # platform selection
     OSX, WIN, UNIX = getOS()
-    platformModule = getPlatformModule(OSX, WIN, UNIX)
+    _platformModule = getPlatformModule(OSX, WIN, UNIX)
 
     # if the time is less than this value, the sleep time isn't accurate enough
     MIN_SLEEP_TIME = 0.02
 
-    # The number of seconds to pause after EVERY public action function call. Useful for debugging:
+    # The number of seconds of pause after EVERY public function call. Useful for debugging
     PAUSE_BETWEEN_ACTION = 0
 
     # Failsafe constants
 
-    # If the mouse is over a coordinate in FAILSAFE_REGIONS and FAILSAFE is True, the FailSafeException is raised.
-    # The rest of the points are added to the FAILSAFE_REGIONS list at the bottom of this file, after size() has been defined.
-    # The points are for the corners of the screen, but note that these points don't automatically change if the screen resolution changes.
+    # If the mouse is within FAILSAFE_REGIONS and FAILSAFE is True, a FailSafeException exception will be raised which will abort execution.
     FAILSAFE = True
     FAILSAFE_REGIONS = [(0, 0, 0, 0)]
 
@@ -97,7 +97,7 @@ class Config:
 
     # This option almost doubles the speed by using compressed images in image recognition,
     # but degrades unambiguous image recognition.
-    # Use this parameter as a compression multiplier, for instance:
+    # Use this parameter as a compression divider, for instance:
     # If the value is 1 - the image size doesn't change (width / 1 and height / 1)
     # If the value is 2 - the image will become x4 times smaller, (width / 2 and height / 2).
     # If the value greater than 4, the speed will increase slightly.
@@ -107,9 +107,9 @@ class Config:
     # This parameter increases speed by about 30%, but degrades unambiguous image recognition
     GRAYSCALE = True
 
-    # Main score for detection match
+    # The value after which all search functions return positive
     MIN_PRECISION = 0.8
-    # After this time a image search will return a None result
+    # The time limit for search functions. If it is exceeded, None is returned
     MAX_SEARCH_TIME = 2.0
 
     REFRESH_RATE = None
@@ -120,7 +120,7 @@ class Config:
     # Each TIME_STEP in seconds tap and write takes after each key press
     TIME_STEP = 0
 
-    # Constants for window control function
+    # If active, pysikuli will wait for the window management functions to complete their execution.
     WINDOW_WAITING_CONFIRMATION = True
 
     @property
@@ -128,7 +128,7 @@ class Config:
         return _MONITOR_REGION
 
     @property
-    def MONITOR_RESOLUTION(self) -> tuple[int, int, int, int]:
+    def MONITOR_RESOLUTION(self) -> tuple[int, int]:
         return _MONITOR_RESOLUTION
 
     # Constants for pymsgbox module
@@ -189,9 +189,9 @@ class Config:
     # Constants for the mouse button names:
     MOUSE_PRIMARY_BUTTON = Button.left
     MOUSE_SECONDARY_BUTTON = Button.right
-    MOUSE_SPEED = 1
+    MOUSE_SPEED = 2
 
-    # Constants for tools module
+    # Constants for utils module
     SOUND_ON = True
     SOUND_CAPTURE_PATH = os.path.join(
         os.path.dirname(__file__), "tools_data/_capture.mp3"
@@ -203,7 +203,12 @@ class Config:
     DEBUG_SETTINGS = {
         "PAUSE_BETWEEN_ACTION": 0.5,
         "TIME_STEP": round(1 / REFRESH_RATE, 5),
-        "WAIT_WINDOW_ACTIVATION": True,
+        "MOUSE_SPEED": 1,
+    }
+
+    _DEFAULT_SETTINGS = {
+        "PAUSE_BETWEEN_ACTION": 0,
+        "TIME_STEP": 0,
         "MOUSE_SPEED": 1,
     }
 
@@ -214,8 +219,12 @@ class Config:
     @DEBUG.setter
     def DEBUG(self, val):
         self._DEBUG = val
-        for key, value in self.DEBUG_SETTINGS.items():
-            setattr(self, key, value)
+        if val == True:
+            for key, value in self.DEBUG_SETTINGS.items():
+                setattr(self, key, value)
+        elif val == False:
+            for key, value in self._DEFAULT_SETTINGS.items():
+                setattr(self, key, value)
 
     def __init__(self):
         self._OK_TEXT = "OK"
@@ -231,7 +240,6 @@ class Config:
         self._TEXT_ENTRY_FONT_SIZE = 12
 
         self._DEBUG = False
-        self._MOUSE_SPEED = 1
         self._FAILSAFE_HOTKEY = None
 
 

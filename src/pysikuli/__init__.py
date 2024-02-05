@@ -69,7 +69,7 @@ from ._main import (
 )
 
 
-# import the window management functions
+# import the window control functions
 from ._main import (
     activateWindow,
     activateWindowUnderMouse,
@@ -103,18 +103,17 @@ from ._main import (
 
 
 __author__ = "Oleg Smoliakov"
-__version__ = "0.0.15"
+__version__ = "0.0.16"
 
 _REG_FORMAT = "x1y1x2y2"
 
 
 def getRegion(interval=0.5):
-    """
-    getRigion helps to determine the coordinates of a region by hovering
-    the mouse over the points of the screen you want to see.
+    """getRigion helps to determine the Region coordinates.
 
-    the region requires 2 points: left-top and right-bottom.
-    if you hold the mouse on the same spot for 3 `intervals`
+    Simply by hovering your mouse over points on the screen.
+    The region requires 2 points: left-top and right-bottom.
+    If you hold the mouse on the same spot for 3 `intervals`
     the point will be captured and capture sound will be played *by default
 
     Args:
@@ -122,7 +121,7 @@ def getRegion(interval=0.5):
         between each mouse posuition capture  . Defaults to 0.5.
 
     Returns:
-        updated clipboard with prepared region like: "1, 2, 3, 4"
+        updated clipboard with prepared region like: "Region(1, 2, 3, 4)"
         also print this region in console
     """
     return _getRegion(_REG_FORMAT, interval)

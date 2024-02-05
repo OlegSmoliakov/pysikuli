@@ -1,10 +1,12 @@
 [tool.poetry]
 authors = ["OlegSmoliakov <smailzpro@gmail.com>"]
 name = "pysikuli"
-version = "0.0.15"
+version = "0.0.16"
 description = "Fast cross-platform RPA tool for GUI automation"
 readme = "README.md"
-license = "LICENSE.txt"
+license = "LGPL-3.0-only"
+repository = "https://github.com/OlegSmoliakov/pysikuli"
+documentation = "https://pysikuli.readthedocs.io"
 keywords = ["gui", "automation", "desktop", "RPA", "test", "testing",
             "cross-platform", "window", "control", "menu", "title", "name",
             "geometry", "size", "position", "move", "resize", "minimize",
@@ -27,8 +29,8 @@ classifiers = [
 
 [tool.poetry.dependencies]
 python = "^3.10"
-pip = "^23.3.2"
-wheel = "^0.41.3"
+pip = "^24.0"
+wheel = "^0.42.0"
 mss = "^9.0.1"
 opencv-python = "^4.8.1.78"
 send2trash = "^1.8.2"
@@ -47,6 +49,11 @@ twine = "^4.0.2"
 mutagen = {version = "^1.47.0", markers = "platform_system == 'Linux'"}
 pytest = "^7.4.3"
 pytest-cov = "^4.1.0"
+
+# for ReadTheDocs editing
+sphinx = ">=7.1.2"
+sphinx-rtd-theme = ">=1.3.0rc1"
+esbonio = "^0.16.4"
 
 [build-system]
 requires = ["poetry-core"]

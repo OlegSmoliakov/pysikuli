@@ -91,6 +91,18 @@ def failSafeCheck(wrappedFunction):
 
 
 class Region(object):
+    """Represent specific part of the screen
+
+    e.g. Region(0, 0, 100, 100) define up left part of the screen
+    with heigh and width equal to 100 pixels.
+
+    Args:
+        Region(x1, y1, x2, y2) (int): class initialization
+
+    Returns:
+        _type_: _description_
+    """
+
     __slots__ = ("time_step", "reg", "x1", "y1", "x2", "y2")
 
     def __init__(self, x1: int, y1: int, x2: int, y2: int):
@@ -236,6 +248,18 @@ class Region(object):
         precision: float = None,
         pixel_colors: tuple = None,
     ):
+        """find an image pattern
+
+        Args:
+            image (_type_): _description_
+            max_search_time (float, optional): _description_. Defaults to None.
+            grayscale (bool, optional): _description_. Defaults to None.
+            precision (float, optional): _description_. Defaults to None.
+            pixel_colors (tuple, optional): _description_. Defaults to None.
+
+        Returns:
+            _type_: _description_
+        """
         return find(
             image=image,
             region=self.reg,
@@ -426,6 +450,20 @@ def find(
     precision: float = None,
     pixel_colors: tuple = None,
 ):
+    """find an image pattern on the screen or specific region
+
+    Args:
+        image (_type_): _description_
+        region (_type_, optional): _description_. Defaults to None.
+        max_search_time (float, optional): _description_. Defaults to None.
+        time_step (float, optional): _description_. Defaults to None.
+        grayscale (bool, optional): _description_. Defaults to None.
+        precision (float, optional): _description_. Defaults to None.
+        pixel_colors (tuple, optional): _description_. Defaults to None.
+
+    Returns:
+        _type_: _description_
+    """
     max_search_time = (
         max_search_time if max_search_time is not None else config.MAX_SEARCH_TIME
     )
@@ -984,7 +1022,7 @@ def write(message, time_step: float = None):
 
 @failSafeCheck
 def paste(text: str):
-    """fast paste text into selected window. Equivalent copyToClip + (ctrl or cmd + v), works on all platform*
+    """fast paste text into selected window. Equivalent copyToClip + (ctrl or cmd + v)
 
     Args:
         text (str): text, which one will be entered into active window
@@ -997,11 +1035,11 @@ def paste(text: str):
 
 
 def copyToClip(text):
-    config.platformModule._copy(text)
+    config._platformModule._copy(text)
 
 
 def pasteFromClip():
-    return config.platformModule._paste()
+    return config._platformModule._paste()
 
 
 def mousePosition():
@@ -1183,11 +1221,11 @@ def click(
     precision: float = None,
     # click variables
     button: Button = None,
-    clicks=1,
-    interval=0.0,
+    clicks: int = 1,
+    interval: float = 0.0,
 ):
     """
-    Perform a click operation.
+    Perform a mouse click operation.
 
     :param max_search_time: Maximum time for searching, in seconds.
     :type max_search_time: float

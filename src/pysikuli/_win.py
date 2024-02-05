@@ -1,5 +1,4 @@
 import logging
-import enum
 
 try:
     import win32gui as w32
@@ -11,16 +10,26 @@ import pyperclip
 from pynput.keyboard import Key
 
 
-class WinKey(enum.Enum):
+class WinKey:
     alt = Key.alt
     alt_r = Key.alt_r
     alt_gr = Key.alt_gr
-    caps_lock = Key.caps_lock
+    shift = Key.shift
+    shift_r = Key.shift_r
     ctrl = Key.ctrl
     ctrl_r = Key.ctrl_r
+    caps_lock = Key.caps_lock
+    left = Key.left
+    right = Key.right
+    up = Key.up
     down = Key.down
+    page_down = Key.page_down
+    page_up = Key.page_up
+    home = Key.home
     end = Key.end
     esc = Key.esc
+    space = Key.space
+    tab = Key.tab
     f1 = Key.f1
     f2 = Key.f2
     f3 = Key.f3
@@ -41,16 +50,6 @@ class WinKey(enum.Enum):
     f18 = Key.f18
     f19 = Key.f19
     f20 = Key.f20
-    home = Key.home
-    left = Key.left
-    page_down = Key.page_down
-    page_up = Key.page_up
-    right = Key.right
-    shift = Key.shift
-    shift_r = Key.shift_r
-    space = Key.space
-    tab = Key.tab
-    up = Key.up
 
     media_play_pause = Key.media_play_pause
     media_volume_mute = Key.media_volume_mute
@@ -63,6 +62,8 @@ class WinKey(enum.Enum):
     enter = Key.enter
     delete = Key.delete
     backspace = Key.backspace
+    ctrl = Key.ctrl
+    ctrl_r = Key.ctrl_r
 
     insert = Key.insert
     menu = Key.menu
