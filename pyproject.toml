@@ -36,7 +36,7 @@ opencv-python = "^4.8.1.78"
 send2trash = "^1.8.2"
 pyhotkey = "^1.5.0"
 playsound = "1.2.2"
-pygobject = {version = "^3.46.0", markers = "platform_system == 'Linux'"}   #needed for playsound only
+# pygobject = {version = "^3.46.0", markers = "platform_system == 'Linux'"}   #needed for playsound only
 pyperclip = {version = "^1.8.2", markers = "platform_system != 'Linux'"}
 pywinctl = "^0.3"
 pymsgbox = "^1.0.9"
