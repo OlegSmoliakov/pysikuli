@@ -5,10 +5,11 @@ build:
   tools:
     python: "3.12"
   apt_packages:
+    - apt-utils
     - xvfb
   jobs:
     pre_create_environment:
-      - Xvfb :99
+      - Xvfb :99 & export DISPLAY=:99
 
 python:
   install:
