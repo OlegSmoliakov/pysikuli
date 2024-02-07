@@ -1,5 +1,5 @@
 [tool.poetry]
-authors = ["OlegSmoliakov <smailzpro@gmail.com>"]
+authors = ["Oleg Smoliakov <smailzpro@gmail.com>"]
 name = "pysikuli"
 version = "0.0.16"
 description = "Fast cross-platform RPA tool for GUI automation"

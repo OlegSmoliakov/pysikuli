@@ -1,13 +1,21 @@
 # Configuration file for the Sphinx documentation builder.
 
+
+import os
+import sys
+
+sys.path.insert(0, os.path.abspath(os.path.join(".", "..", "..", "src")))
+
+import pysikuli as sik
+
 # -- Project information
 
-project = "Pysikuli"
-copyright = "2024, OlegSmoliakov"
-author = "OlegSmoliakov"
+project = "pysikuli"
+copyright = "2024, Oleg Smoliakov"
+author = "Oleg Smoliakov"
 
-release = "0.0"
-version = "0.0.16"
+release = ""
+version = sik.__version__
 
 # -- General configuration
 
@@ -18,6 +26,13 @@ extensions = [
     "sphinx.ext.autosummary",
     "sphinx.ext.intersphinx",
     "sphinx.ext.napoleon",
+]
+autoclass_content = "both"
+autodoc_default_flags = ["members", "undoc-members", "inherited-members"]
+autodoc_member_order = "bysource"
+autodoc_mock_imports = [
+    # Standard libs. Prevents errors from Py2 incompatible imports in Py3 code.
+    "collections",
 ]
 
 intersphinx_mapping = {
