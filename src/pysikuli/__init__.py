@@ -9,8 +9,12 @@ from ._config import Button, config
 
 if config.OSX:
     from ._osx import MacKey as Key
-else:
+elif config.WIN:
     from ._win import WinKey as Key
+elif config.UNIX:
+    from ._unix import UnixKey as Key
+else:
+    raise OSError("Can't recognize OS")
 
 MONITOR_REGION = config.MONITOR_REGION
 MONITOR_RESOLUTION = config.MONITOR_RESOLUTION
@@ -21,6 +25,13 @@ from ._utils import (
     _getRegion,
     cleanupPics,
 )
+
+if config.UNIX:
+    from ._unix import _apt_pkgs_installation_check
+
+    def apt_pkgs_installation_check():
+        return _apt_pkgs_installation_check(_config._REQUIRED_PKGS_LINUX)
+
 
 from ._main import Region
 
@@ -125,10 +136,3 @@ def getRegion(interval=0.5):
         also print this region in console
     """
     return _getRegion(_REG_FORMAT, interval)
-
-
-if config.UNIX:
-    REQUIRED_PKGS_LINUX = ["libgirepository1.0-dev", "libcairo2-dev", "xinput"]
-    from ._unix import _apt_pkgs_installation_check
-
-    _apt_pkgs_installation_check(REQUIRED_PKGS_LINUX)

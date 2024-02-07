@@ -79,7 +79,7 @@ Classes
    Uses the same functions that are declared separately, but
    sets the region and time_step parameters by default.
 
-   .. autoattribute:: pysikuli.Region.region
+   .. autoattribute:: pysikuli.Region.reg
       :annotation: tuple(int, int, int, int)
 
    .. autoattribute:: pysikuli.Region.x1

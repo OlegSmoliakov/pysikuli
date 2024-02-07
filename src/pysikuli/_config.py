@@ -7,7 +7,7 @@ import pymsgbox as pmb
 from pynput.keyboard import Key
 from pynput.mouse import Button
 
-
+_REQUIRED_PKGS_LINUX = ["libgirepository1.0-dev", "libcairo2-dev", "xinput"]
 _MONITOR_REGION = pmc.getPrimary().box
 _MONITOR_RESOLUTION = (
     _MONITOR_REGION[2],
