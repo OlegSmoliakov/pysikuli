@@ -199,33 +199,33 @@ Classes
 
    General parameters:
 
-   ================================ =========================== =============================== ===================================================================================================================================
+   ================================ =========================== ==================================== ===================================================================================================================================
       Parameter                        Type                       Default value                       Description
-   ================================ =========================== =============================== ===================================================================================================================================
-      OSX, WIN, UNIX                 bool                        ``False``                        Sets to ``True`` value if you use this **OS**
-      MIN_SLEEP_TIME                 float                       ``0.02``                         If the time is less than this value, the sleep time isn't accurate enough
-      PAUSE_BETWEEN_ACTION           float                       ``0``                            The number of seconds of pause after EVERY public function call. Useful for debugging
-      FAILSAFE                       bool                        ``True``                         If the mouse is within ``FAILSAFE_REGIONS`` or ``FAILSAFE_HOTKEY`` is pressed and ``FAILSAFE`` is ``True``, a ``FailSafeException`` will be raised.
-      FAILSAFE_REGIONS               list                        ``[(0, 0, 0, 0)]``               You can add another regions using the ``.append()`` method.
-      FAILSAFE_HOTKEY                list                        MacOS:                           Currently, only one hotkey can be configured
-                                                                                               
+   ================================ =========================== ==================================== ===================================================================================================================================
+      OSX, WIN, UNIX                 bool                        ``False``                            Sets to ``True`` value if you use this **OS**
+      MIN_SLEEP_TIME                 float                       ``0.02``                             If the time is less than this value, the sleep time isn't accurate enough
+      PAUSE_BETWEEN_ACTION           float                       ``0``                                The number of seconds of pause after EVERY public function call. Useful for debugging
+      FAILSAFE                       bool                        ``True``                             If the mouse is within ``FAILSAFE_REGIONS`` or ``FAILSAFE_HOTKEY`` is pressed and ``FAILSAFE`` is ``True``, a ``FailSafeException`` will be raised.
+      FAILSAFE_REGIONS               list                        ``[(0, 0, 0, 0)]``                   You can add another regions using the ``.append()`` method.
+      FAILSAFE_HOTKEY                list                        MacOS:                               Currently, only one hotkey can be configured
+
                                                                  ``[Key.alt, Key.shift, "c"]``
                                                                  
                                                                  Windows/Linux:
 
                                                                  ``[Key.ctrl, Key.alt, "z"]``     
-      WINDOW_WAITING_CONFIRMATION    bool                        ``True``                         If active, pysikuli will wait for the window management functions to complete their execution
-      REFRESH_RATE                   int                         set automatically                Left in case of incorrect detection. Uses in ``scroll`` functions and ``DEBUG SETTINGS``
-      MONITOR_REGION                 tuple                       the screen region of             Left in case of incorrect detection. Uses as default ``Region`` in search functions and for validating user ``Region``s
+      WINDOW_WAITING_CONFIRMATION    bool                        ``True``                             If active, pysikuli will wait for the window management functions to complete their execution
+      REFRESH_RATE                   int                         set automatically                    Left in case of incorrect detection. Uses in ``scroll`` functions and ``DEBUG SETTINGS``
+      MONITOR_REGION                 tuple                       the screen region of                 Left in case of incorrect detection. Uses as default ``Region`` in search functions and for validating user ``Region`` s
                                     
                                      (int, int, int, int)   
                                                                  
                                                                  your main monitor            
-      MONITOR_RESOLUTION             tuple(int, int)             the resolution of                Uses in ``popup`` functions
+      MONITOR_RESOLUTION             tuple(int, int)             the resolution of                    Uses in ``popup`` functions
                                                                  
                                                                  your main monitor            
-      DEBUG                          bool                        ``False``                        If ``True``, ``DEBUG_SETTINGS``  will be applied
-   ================================ =========================== =============================== ===================================================================================================================================
+      DEBUG                          bool                        ``False``                            If ``True``, ``DEBUG_SETTINGS``  will be applied
+   ================================ =========================== ==================================== ===================================================================================================================================
 
    ``DEBUG_SETTINGS`` list:
 

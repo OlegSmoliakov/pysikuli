@@ -58,20 +58,20 @@ def getLocation(interval=0.5):
 
 def _getRegion(reg_format, interval=0.5, test_interrupt_offset=0):
     """
-    getRigion helps to determine the coordinates of a region by hovering
-    the mouse over the points of the screen you want to see.
+    getRigion helps to determine the Region coordinates.
 
-    the region requires 2 points: left-top and right-bottom.
-    if you hold the mouse on the same spot for 3 `intervals`
-    the point will be captured and capture sound will be played *by default
+    Simply by hovering your mouse over points on the screen.
+    The region requires 2 points, left-top and right-bottom.
+    If you hold the mouse on the same spot for 3 `intervals`
+    the point will be captured and capture sound will be played by default
 
     Args:
         `interval` (float): time in seconds, which uses for delay
         between each mouse posuition capture  . Defaults to 0.5.
 
     Returns:
-        updated clipboard with prepared region like: "1, 2, 3, 4"
-        also print this region in terminal
+        updated clipboard with prepared region like: "Region(1, 2, 3, 4)"
+        also print this region in console
     """
     playsound = _setPlaysound()
     points = 2

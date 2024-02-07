@@ -22,10 +22,10 @@ version = sik.__version__
 extensions = [
     "sphinx.ext.duration",
     "sphinx.ext.doctest",
+    "sphinx.ext.napoleon",
     "sphinx.ext.autodoc",
     "sphinx.ext.autosummary",
     "sphinx.ext.intersphinx",
-    "sphinx.ext.napoleon",
 ]
 autoclass_content = "both"
 autodoc_default_flags = ["members", "undoc-members", "inherited-members"]

@@ -118,6 +118,6 @@ def _getRefreshRate():
         capture_output=True,
         encoding="utf-8",
     ).stdout
-    current_refrash_rate = re.findall(".{6}\*", output)[0]
-    current_refrash_rate = re.sub("\..+", "", current_refrash_rate)
+    current_refrash_rate = re.findall(r".{6}\*", output)[0]
+    current_refrash_rate = re.sub(r"\..+", "", current_refrash_rate)
     return int(current_refrash_rate)

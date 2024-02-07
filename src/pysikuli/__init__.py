@@ -120,12 +120,13 @@ _REG_FORMAT = "x1y1x2y2"
 
 
 def getRegion(interval=0.5):
-    """getRigion helps to determine the Region coordinates.
+    """
+    getRigion helps to determine the Region coordinates.
 
     Simply by hovering your mouse over points on the screen.
-    The region requires 2 points: left-top and right-bottom.
+    The region requires 2 points, left-top and right-bottom.
     If you hold the mouse on the same spot for 3 `intervals`
-    the point will be captured and capture sound will be played *by default
+    the point will be captured and capture sound will be played by default
 
     Args:
         `interval` (float): time in seconds, which uses for delay
