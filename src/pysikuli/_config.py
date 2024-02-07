@@ -7,8 +7,14 @@ import pymsgbox as pmb
 from pynput.keyboard import Key
 from pynput.mouse import Button
 
+
 _REQUIRED_PKGS_LINUX = ["libgirepository1.0-dev", "libcairo2-dev", "xinput"]
-_MONITOR_REGION = pmc.getPrimary().box
+
+try:
+    _MONITOR_REGION = pmc.getPrimary().box
+except:
+    _MONITOR_REGION = (0, 0, 1920, 1080)
+
 _MONITOR_RESOLUTION = (
     _MONITOR_REGION[2],
     _MONITOR_REGION[3],
@@ -114,7 +120,10 @@ class Config:
 
     REFRESH_RATE = None
     if not REFRESH_RATE:
-        REFRESH_RATE = int(pmc.getPrimary().frequency)
+        try:
+            REFRESH_RATE = int(pmc.getPrimary().frequency)
+        except:
+            REFRESH_RATE = 60
 
     # Each TIME_STEP in seconds a image searching takes a new screenshot for next analysis
     # Each TIME_STEP in seconds tap and write takes after each key press
