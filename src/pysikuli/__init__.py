@@ -16,9 +16,6 @@ elif config.UNIX:
 else:
     raise OSError("Can't recognize OS")
 
-MONITOR_REGION = config.MONITOR_REGION
-MONITOR_RESOLUTION = config.MONITOR_RESOLUTION
-
 # import optional helpfull utils for the user
 from ._utils import (
     getLocation,
@@ -112,6 +109,8 @@ from ._main import (
     deleteFile,
 )
 
+MONITOR_REGION = config.MONITOR_REGION
+MONITOR_RESOLUTION = config.MONITOR_RESOLUTION
 
 __author__ = "Oleg Smoliakov"
 __version__ = "0.0.17"

@@ -1,6 +1,25 @@
 import cv2
 import src.pysikuli as sik
 import numpy as np
+import toml
+
+
+def pyproject_version_update():
+    filename = "pyproject.toml"
+    version = sik.__version__
+
+    with open(filename, "r") as f:
+        data = toml.load(f)
+
+    if data["tool"]["poetry"]["version"] != version:
+        data["tool"]["poetry"]["version"] = version
+    else:
+        return None
+
+    with open(filename, "w") as f:
+        toml.dump(data, f)
+
+    print(f"Version updated to: {version}")
 
 
 def getAllFuncs(module):
