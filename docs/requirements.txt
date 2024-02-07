@@ -1,3 +1,10 @@
-pysikuli>=0.0.16
 sphinx==7.1.2
 sphinx-rtd-theme==1.3.0rc1
+pywinctl == 0.3
+pymsgbox == 1.0.9
+pyhotkey == 1.5.0
+pyperclip == 1.8.2
+send2trash == 1.8.2
+gitignore-parser == 0.1.11
+opencv-python == 4.8.1.78
+mss == 9.0.1
