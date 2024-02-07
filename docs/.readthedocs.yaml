@@ -9,6 +9,7 @@ build:
   jobs:
     pre_create_environment:
       - Xvfb :0 & export DISPLAY=:0
+      - export XDG_SESSION_TYPE=x11
 
 python:
   install:
