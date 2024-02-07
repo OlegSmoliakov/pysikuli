@@ -8,6 +8,10 @@ build:
 python:
   install:
     - requirements: docs/requirements.txt
+  jobs:
+    pre_build:
+      - apt install xvfb
+      - Xvfb :99 & export DISPLAY=:99
 
 sphinx:
   configuration: docs/source/conf.py
