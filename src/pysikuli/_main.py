@@ -7,6 +7,7 @@ import time
 import cv2
 import numpy as np
 import pymsgbox as pmb
+import pyperclip
 import pywinctl as pwc
 
 from mss.screenshot import ScreenShot
@@ -15,7 +16,7 @@ from PyHotKey import keyboard_manager as keyboard
 from pynput.mouse import Controller as mouse_manager
 from send2trash import send2trash
 
-from ._config import config, Key, Button, _MONITOR_REGION, _SUPPORTED_PIC_FORMATS
+from ._config import config, Key, Button, _SUPPORTED_PIC_FORMATS, _MAX_SPEED
 
 mouse = mouse_manager()
 
@@ -56,11 +57,12 @@ def _mouseFailSafeCheck():
 def hotkeyFailSafeCheck():
     pressed = 0
     pressed_keys = keyboard.pressed_keys
-    for key in config.FAILSAFE_HOTKEY:
-        if key in pressed_keys:
-            pressed += 1
-    if pressed == len(config.FAILSAFE_HOTKEY):
-        return "pysikuli fail-safe triggered when pressing the fail-safe hotkey."
+    for hotkey in config.FAILSAFE_HOTKEY:
+        for key in hotkey:
+            if key in pressed_keys:
+                pressed += 1
+        if pressed == len(hotkey):
+            return "pysikuli fail-safe triggered when pressing the fail-safe hotkey."
 
 
 def _failSafeCheck():
@@ -110,8 +112,11 @@ class Region(object):
         self.x1, self.y1, self.x2, self.y2 = x1, y1, x2, y2
         self.time_step = config.TIME_STEP
 
+    def __repr__(self) -> str:
+        return f"{type(self).__name__}(reg={self.reg}, time_step={self.time_step})"
+
     def __str__(self):
-        return f"<Region ({self.x1}, {self.y1}, {self.x2}, {self.y2})>"
+        return f"{type(self).__name__}(reg={self.reg}, time_step={self.time_step})"
 
     def __eq__(self, other):
         return self.reg == other.reg
@@ -285,9 +290,9 @@ class Match(Region):
     __slots__ = (
         "up_left_loc",
         "center_loc",
-        "offset_loc",
         "x",
         "y",
+        "offset_loc",
         "offset_x",
         "offset_y",
         "score",
@@ -302,7 +307,6 @@ class Match(Region):
         self,
         up_left_loc: tuple,
         center_loc: tuple,
-        relative_loc_center: tuple,
         score: float,
         precision: float,
         np_image: np.ndarray,
@@ -321,18 +325,24 @@ class Match(Region):
         self.precision = precision
         self.np_image = np_image
         self.np_region = np_region
-        self.center_pixel = getPixel(relative_loc_center, np_region)
+        rel_loc_center = (self.x - up_left_loc[0], self.y - up_left_loc[1])
+        self.center_pixel = getPixelRGB(rel_loc_center, np_image)
 
         # q, esc, space, backspace
         self.exit_keys_cv2 = [113, 27, 32, 8]
 
     def __str__(self):
+        return f"{type(self).__name__}(location={self.center_loc}, score={self.score}, center_pixel={self.center_pixel})"
+
+    def __repr__(self) -> str:
         args = [
-            "location={!r}".format(self.center_loc),
-            "score={!r}".format(self.score),
-            "precision={!r}".format(self.precision),
+            f"up_left_loc={self.up_left_loc}",
+            f"center_loc={self.center_loc}",
+            f"score={self.score}",
+            f"precision={self.precision}",
+            f"center_pixel={self.center_pixel}",
         ]
-        return "{}({})".format(type(self).__name__, ", ".join(args))
+        return f"{type(self).__name__}({', '.join(args)})"
 
     def __eq__(self, other):
         return str(self) == other
@@ -376,8 +386,8 @@ class Location:
         pass
 
 
-def grab(region: tuple):
-    region = _regionValidation(region)
+def grab(region: tuple[int, int, int, int]):
+    region = _regionNormalization(region)
     with mss() as sct:
         return sct.grab(region)
 
@@ -484,13 +494,13 @@ def find(
     return None
 
 
-def _imgDownsize(img: np.ndarray, divider):
+def _imgDownsize(img: np.ndarray, scale_percent: int):
     """
     divider must be positive
     does not make sense with a divider greater than 4 because of the small speed increase.
     """
-    width = int(img.shape[1] / divider)
-    height = int(img.shape[0] / divider)
+    width = int(img.shape[1] * scale_percent / 100)
+    height = int(img.shape[0] * scale_percent / 100)
     dsize = (width, height)
 
     return cv2.resize(img, dsize, interpolation=cv2.INTER_AREA)
@@ -534,7 +544,7 @@ def _coordinateNormalization(
 def _regionValidation(reg: tuple | list):
     try:
         x1, y1, x2, y2 = reg
-    except TypeError:
+    except ValueError:
         raise TypeError(f"Entered region is incorrect: {reg}")
     x1 = int(x1)
     y1 = int(y1)
@@ -542,7 +552,7 @@ def _regionValidation(reg: tuple | list):
     y2 = int(y2)
 
     if any(
-        coord < _MONITOR_REGION[i] or coord > _MONITOR_REGION[i + 2]
+        coord < config.MONITOR_REGION[i] or coord > config.MONITOR_REGION[i + 2]
         for coord, i in zip([x1, y1, x2, y2], [0, 1, 0, 1])
     ):
         raise TypeError(f"Region is outside the screen: {(x1, y1, x2, y2)}")
@@ -551,13 +561,15 @@ def _regionValidation(reg: tuple | list):
     return (x1, y1, x2, y2)
 
 
-def _locationValidation(loc: tuple):
+def _locationValidation(loc: tuple[int, int]):
     x, y = loc
     if any(
-        coord < _MONITOR_REGION[i] or coord > _MONITOR_REGION[i + 2]
+        coord < config.MONITOR_REGION[i] or coord > config.MONITOR_REGION[i + 2]
         for coord, i in zip([x, y], [0, 1])
     ):
         raise ValueError(f"location {loc} is outside the screen")
+    if not isinstance(x, int) or not isinstance(y, int):
+        raise ValueError(f"location {loc} must contain integer value")
 
 
 def _regionNormalization(reg=None):
@@ -585,7 +597,19 @@ def _regionNormalization(reg=None):
     return reg
 
 
-def _handleNpRegion(np_region: np.ndarray, tuple_region):
+def _handleNpRegion(np_region: np.ndarray, tuple_region: tuple[int, int, int, int]):
+    """handler for validation np.array as region for futher _matchProcessing
+
+    Args:
+        np_region (np.ndarray): np_region
+        tuple_region (tuple[int, int, int, int]): the borderds of this np_region
+
+    Raises:
+        TypeError: in case there is no tuple_region
+
+    Returns:
+        tuple[np.ndarray, tuple[int, int, int, int]]: validated array and tuple
+    """
     if tuple_region is None:
         raise TypeError("Can't use np.array as region without tuple_reg")
 
@@ -609,7 +633,7 @@ def _regionToNumpyArray(reg=None, tuple_region=None):
         elif isinstance(reg, Region):
             grab_reg = sct.grab(tuple_reg)
         elif reg is None:
-            grab_reg = sct.grab(sct.monitors[0])
+            grab_reg = sct.grab(tuple_reg)
         elif isinstance(reg, (tuple | list)):
             grab_reg = sct.grab(tuple_reg)
         else:
@@ -672,30 +696,30 @@ def _matchProcessing(
         # imread from np_image must create always BGR images, but in my case it is RGB
         # sct.grab from np_region create always RGB images
 
-    if config.COMPRESSION_RATIO > 1:
-        np_image = _imgDownsize(np_image, config.COMPRESSION_RATIO)
-        np_region = _imgDownsize(np_region, config.COMPRESSION_RATIO)
-    elif config.COMPRESSION_RATIO < 1:
+    if config.PERCENT_IMAGE_DOWNSIZING < 100:
+        np_image = _imgDownsize(np_image, config.PERCENT_IMAGE_DOWNSIZING)
+        np_region = _imgDownsize(np_region, config.PERCENT_IMAGE_DOWNSIZING)
+    elif config.PERCENT_IMAGE_DOWNSIZING > 100:
         raise ValueError(
-            f"Couldn't recognize COMPRESSION_RATIO: {config.COMPRESSION_RATIO}"
+            f"Couldn't recognize PERCENT_IMAGE_DOWNSIZING: {config.PERCENT_IMAGE_DOWNSIZING}"
         )
 
     # also can use cv2.TM_CCOEFF, TM_CCORR_NORMED and TM_CCOEFF_NORMED in descending order of speed
-    # for TM_CCORR_NORMED, minimum precision is 0.991
+    # for TM_CCORR_NORMED, minimum precision ~ 0.991
 
     cv2_match = cv2.matchTemplate(np_region, np_image, cv2.TM_CCOEFF_NORMED)
 
-    match_dict = dict(
-        image_capture=image_capture,
-        region_capture=region_capture,
-        cv2_match=cv2_match,
-        img_width=img_width,
-        img_height=img_height,
-        tuple_region=tuple_region,
-        precision=precision,
+    match_result = (
+        image_capture,
+        region_capture,
+        cv2_match,
+        img_width,
+        img_height,
+        tuple_region,
+        precision,
     )
 
-    return match_dict
+    return match_result
 
 
 def exist(
@@ -704,7 +728,7 @@ def exist(
     grayscale: bool = None,
     precision: float = None,
     pixel_colors: tuple = None,
-    tuple_region: tuple | list = None,
+    _tuple_region: tuple | list = None,
 ):
     # TODO: create full discription
     # TODO: find out simple way to debug from main or other scripts
@@ -738,25 +762,32 @@ def exist(
         grayscale=grayscale,
         precision=precision,
         pixel_colors=pixel_colors,
-        tuple_region=tuple_region,
-    ).values()
+        tuple_region=_tuple_region,
+    )
 
     _, max_val, _, max_loc = cv2.minMaxLoc(cv2_match)
 
     max_val = round(max_val, 6)
-    image = image if isinstance(image, str) else type(image)
-    logging.debug(f"search result: {max_val} precision: {precision} img: {image}")
 
-    max_loc_rel = tuple(point * config.COMPRESSION_RATIO for point in max_loc)
+    if isinstance(image, np.ndarray):
+        image = f"{type(image).__name__}(shape={image.shape})"
+    elif isinstance(image, ScreenShot):
+        image = repr(image)
+
+    logging.debug(f"search result: {max_val} precision: {precision} img: {image}")
+    max_loc_rel = tuple(
+        int(point / config.PERCENT_IMAGE_DOWNSIZING * 100) for point in max_loc
+    )
     max_loc_abs = (tuple_region[0] + max_loc_rel[0], tuple_region[1] + max_loc_rel[1])
 
     max_loc_abs_center = _getCenterLoc(img_width, img_height, max_loc_abs)
-    max_loc_rel_center = _getCenterLoc(img_width, img_height, max_loc_rel)
+
+    if max_val < precision:
+        return None
 
     match_class = Match(
         up_left_loc=max_loc_abs,
         center_loc=max_loc_abs_center,
-        relative_loc_center=max_loc_rel_center,
         score=max_val,
         precision=precision,
         np_image=image_capture,
@@ -764,11 +795,9 @@ def exist(
         tuple_region=tuple_region,
     )
 
-    if max_val < precision:
-        return None
     if not pixel_colors:
         return match_class
-    elif getPixel(max_loc_rel_center, region_capture) == pixel_colors:
+    elif getPixelRGB(max_loc_rel, image_capture) == pixel_colors:
         return match_class
 
 
@@ -789,7 +818,7 @@ def existAny(
             grayscale=grayscale,
             precision=precision,
             pixel_colors=pixel_colors,
-            tuple_region=tuple_region,
+            _tuple_region=tuple_region,
         )
         if match:
             matches.append(match)
@@ -798,7 +827,7 @@ def existAny(
 
 def existFromFolder(path, region=None, grayscale=None, precision=None):
     """
-    Get all screens on the provided folder and search them on screen.
+    Get all pictures from the provided folder and search them on screen.
 
     input :
     path : path of the folder with the images to be searched on screen like pics/
@@ -852,7 +881,7 @@ def existCount(
 
     precision = precision if precision is not None else config.MIN_PRECISION
 
-    match_result = _matchProcessing(
+    _, _, cv2_match, img_width, img_height, _, _ = _matchProcessing(
         image=image,
         region=region,
         grayscale=grayscale,
@@ -860,24 +889,21 @@ def existCount(
         pixel_colors=pixel_colors,
         tuple_region=tuple_region,
     )
-    location = np.where(match_result["cv2_match"] >= precision)
+    location = np.where(cv2_match >= precision)
 
     count = 0
     match_dict = {}
 
-    half_width = match_result["img_width"] / 2
-    half_height = match_result["img_height"] / 2
+    half_width = img_width / 2
+    half_height = img_height / 2
 
     for pt in zip(*location[::-1]):  # Swap columns and rows
-        x = int(pt[0] * config.COMPRESSION_RATIO + half_width)
-        y = int(pt[1] * config.COMPRESSION_RATIO + half_height)
+        x = int(pt[0] * config.PERCENT_IMAGE_DOWNSIZING + half_width)
+        y = int(pt[1] * config.PERCENT_IMAGE_DOWNSIZING + half_height)
 
         if count:
             prev_loc = match_dict[count - 1]
-            if (
-                x - prev_loc[0] < match_result["img_width"]
-                and y - prev_loc[1] < match_result["img_height"]
-            ):
+            if x - prev_loc[0] < img_width and y - prev_loc[1] < img_height:
                 continue
 
         match_dict[count] = (x, y)
@@ -887,8 +913,8 @@ def existCount(
 
 
 def _getCenterLoc(img_width, img_height, loc: tuple):
-    x = round(loc[0] + img_width / 2)
-    y = round(loc[1] + img_height / 2)
+    x = int(loc[0] + img_width / 2)
+    y = int(loc[1] + img_height / 2)
     return x, y
 
 
@@ -902,49 +928,55 @@ def saveNumpyImg(image: np.ndarray, image_name: str = None, path: str = None):
     """
 
     if image_name:
-        output = f"{image_name}_{time.strftime('%H_%M_%S')}.png"
+        output = f"{image_name}.png"
     else:
         output = f"image_{time.strftime('%H_%M_%S')}.png"
-    cv2.imwrite(output, image)
 
     if path:
         if not os.path.isdir(path):
             raise FileExistsError(f"{path} doesn't exist")
+        if not os.path.isabs(path):
+            raise FileExistsError("Path must be absolute")
     else:
-        path = os.path.join(os.getcwd(), output)
+        path = os.getcwd()
 
-    print(f"Image {path} successfully saved")
+    path = os.path.join(path, output)
+    cv2.imwrite(path, image)
+
+    print(f"Image: {path} successfully saved")
+
+    return path
 
 
 def saveScreenshot(region=None):
     region = _regionNormalization(region)
-    region = _regionValidation(region)
     output = f"Screenshot_{time.strftime('%H_%M_%S')}.png"
     with mss() as sct:
-        if not region:
-            sct.shot(output=output)
-        else:
-            screenshot = sct.grab(region)
-            tools.to_png(screenshot.rgb, screenshot.size, output=output)
+        screenshot = sct.grab(region)
+        tools.to_png(screenshot.rgb, screenshot.size, output=output)
     path = os.path.join(os.getcwd(), output)
     print(f"Image '{path}' successfully saved")
     return path
 
 
-def getPixel(location, np_region: np.ndarray = None) -> tuple[int, int, int]:
-    x, y = location
-    if np_region is None:
+def getPixelRGB(
+    rel_location: tuple[int, int] | list[int, int], np_image: np.ndarray = None
+) -> tuple[int, int, int]:
+    x, y = rel_location
+    x = int(x)
+    y = int(y)
+    if np_image is None:
         reg = (x, y, x + 1, y + 1)
-        np_region = grab(reg)
-        np_region = np.array(np_region)
+        np_image = grab(reg)
+        np_image = np.array(np_image)
         x, y = 0, 0
-    elif len(np_region.shape) < 3:
-        gray = np_region[y][x]
+    elif len(np_image.shape) < 3:
+        gray = np_image[y][x]
         return (gray, gray, gray)
 
-    r = np_region[y][x][2]
-    g = np_region[y][x][1]
-    b = np_region[y][x][0]
+    r = np_image[y][x][2]
+    g = np_image[y][x][1]
+    b = np_image[y][x][0]
     return (r, g, b)
 
 
@@ -1034,12 +1066,12 @@ def paste(text: str):
         hotkey(Key.ctrl, "v")
 
 
-def copyToClip(text):
-    config._platformModule._copy(text)
+def copyToClip(text: str):
+    return pyperclip.copy(text)
 
 
 def pasteFromClip():
-    return config._platformModule._paste()
+    return pyperclip.paste()
 
 
 def mousePosition():
@@ -1066,20 +1098,30 @@ def mouseMove(destination_loc):
     mouse.position = destination_loc
 
 
+def vector_diff(vec1, vec2):
+    return vec2[0] - vec1[0], vec2[1] - vec1[1]
+
+
+def vector_abs(vector):
+    return (abs(vector[0]), abs(vector[1]))
+
+
 @failSafeCheck
 def mouseSmoothMove(
     destination_loc,
     speed: float = None,
 ):
-    start_time = time.time()
+    speed = speed if speed is not None else config.MOUSE_SPEED
 
-    def vector_diff(vec1, vec2):
-        return vec2[0] - vec1[0], vec2[1] - vec1[1]
+    if speed >= _MAX_SPEED:
+        mouse.position = destination_loc
+        return None
+
+    start_time = time.time()
 
     interruptions = 0
     speed_multiplier = 1000
 
-    speed = speed if speed is not None else config.MOUSE_SPEED
     speed *= speed_multiplier
     if speed <= 0:
         speed = 1
@@ -1106,7 +1148,8 @@ def mouseSmoothMove(
     sleep_time = (duration - execute_time) / steps
 
     if sleep_time < min_delay:
-        return mouseMove(destination_loc)
+        mouse.position = destination_loc
+        return None
 
     for step in range(steps):
         start_time = time.time()
@@ -1146,10 +1189,8 @@ def mouseMoveRelative(
     yOffset,
     speed: float = None,
 ):
-    new_loc = (
-        mouse.position[0] + xOffset,
-        mouse.position[1] + yOffset,
-    )
+    x, y = mouse.position
+    new_loc = (x + xOffset, y + yOffset)
     mouseSmoothMove(destination_loc=new_loc, speed=speed)
 
 

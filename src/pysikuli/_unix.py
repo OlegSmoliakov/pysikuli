@@ -67,51 +67,40 @@ class UnixKey:
     scroll_lock = Key.scroll_lock
 
 
-def _copy(text: str):
-    run(
-        ["xsel", "-b"],
-        input=text,
-        encoding="utf-8",
-    )
+def _apt_install(packages: list | tuple):
+    command = ["sudo", "apt-get", "install"]
+    for package in packages:
+        command.append(package)
+
+    run(["sudo", "apt-get", "update"], encoding="utf-8")
+    run(command, encoding="utf-8")
 
 
-def _paste():
-    return run(["xsel", "-b"], capture_output=True, encoding="utf-8").stdout
+def _apt_check(required_pkgs_name: tuple[str] | list[str]):
+    command = ["apt", "list", "--installed"]
+    missing_pkgs = []
 
+    for pkg in required_pkgs_name:
+        temp_command = command.copy()
+        temp_command.append(pkg)
 
-def _apt_pkgs_installation_check(required_pkgs_name: tuple[str] or list):
-    installed_pkgs = run(
-        ["apt", "list", "--installed"],
-        capture_output=True,
-        encoding="utf-8",
-    ).stdout
+        output = run(
+            temp_command,
+            capture_output=True,
+            encoding="utf-8",
+        ).stdout
 
-    # prepare pattern from required pakages for re search
-    pattern = b"\n" + required_pkgs_name[0].encode("utf-8") + b"/"
-    for x in range(1, len(required_pkgs_name)):
-        pattern += b"|\n" + required_pkgs_name[x].encode("utf-8") + b"/"
+        if not "installed" in output:
+            missing_pkgs.append(pkg)
 
-    # get and prepare found pakages for re search
-    found_pkgs = re.findall(pattern, installed_pkgs.encode("utf-8"))
-    format_required_pkgs_name = [
-        b"\n" + x.encode("utf-8") + b"/" for x in required_pkgs_name
-    ]
-
-    missing_pkgs = set(format_required_pkgs_name).symmetric_difference(set(found_pkgs))
-
-    if missing_pkgs == set():
-        return None
+    if missing_pkgs == []:
+        print("The requirements have already been installed")
     else:
-        text = ""
-        for pkg in missing_pkgs:
-            pkg = pkg.strip(b"\n").strip(b"/").decode("utf-8")
-            text = f"{text} {pkg}"
-        print(
-            f"\n\nPlease install the missing packages:{text}\n\nOn Ubuntu/Debian use this command: sudo apt install{text}"
-        )
+        print("Installing packages: " + ", ".join(missing_pkgs))
+        _apt_install(missing_pkgs)
 
 
-# NOTE depricated
+# NOTE depricated, need x11-xserver-utils to run
 def _getRefreshRate():
     output = run(
         ["xrandr"],

@@ -23,30 +23,28 @@ On MacOS and Linux use:
 
 External dependencies
 ======================
-External dependencies mostly belong to the playsound module, which is used to user-friendly capture ``Region`` and ``Location``. However, pysikuli can work normally without them.
+External dependencies mostly belong to the sounddevice module, which is used to user-friendly capture ``Region`` and ``Location``. However, pysikuli can work normally without them.
 
-MacOS
-------
-playsound dependencies:
+Windows:
+--------
+.. rubric:: sounddevice dependence:
 
-.. code-block:: console
-   
-   $ brew install cairo pkg-config
-
-Also you need to enable **Accessibility** and **Screen capture** permissions to terminal or python itself.
+- `Microsoft C++ build tools <https://visualstudio.microsoft.com/visual-cpp-build-tools>`_ 
 
 Linux:
 -------
-playsound dependencies:
+.. rubric:: sounddevice dependencies:
 
-- on Ubuntu/Debian: ``sudo apt install libgirepository1.0-dev libcairo2-dev``
-- on Arch Linux: ``sudo pacman -S cairo pkgconf``
-- on Fedora: ``sudo dnf install cairo-devel pkg-config python3-devel``
-- on penSUSE: ``sudo zypper install cairo-devel pkg-config python3-devel``
+.. code-block:: console
+   
+   $ sudo apt install libportaudio2
 
-evdev dependencies:
+Also, pysikuli will try to install this package on its own the first time you run it
 
-- ``sudo apt-get install python3-dev or python3.x``, where x is version of your python
+MacOS
+-----
+You need to enable **Accessibility** and **Screen capture** permissions to terminal or python itself.
+
 
 VS Code add-ons
 ===============

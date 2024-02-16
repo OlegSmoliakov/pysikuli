@@ -1,111 +1,53 @@
 import pytest
 import platform
-import os
-import subprocess
-from ...src import pysikuli as sik
+
+from subprocess import PIPE, run
+
+import src.pysikuli as sik
 
 if not platform.system() == "Linux":
     pytest.skip("skipping Linux-only tests", allow_module_level=True)
 
-from ...src.pysikuli import _unix as unix
+from src.pysikuli import _unix as unix
 
 TEST_REFRESH_RATE = 60
+TEST_PKGS = ["rolldice"]
 
 
-@pytest.fixture
-def openTextEditor():
-    text = "some test text bla bla bla"
+def uninstalTestPkg():
+    command = ["sudo", "apt-get", "-y", "remove"]
+    for package in TEST_PKGS:
+        command.append(package)
 
-    # run text editor
-    subprocess.Popen("xed", shell=True)
-    sik.sleep(1)
+    run(command, encoding="utf-8")
 
-    # cleanup clipboard
-    sik.tap(sik.Key.space)
-    sik.hotkey(sik.Key.shift, sik.Key.left)
-    sik.hotkey(sik.Key.ctrl, "c")
-    sik.tap(sik.Key.backspace)
 
-    return text
+@pytest.fixture()
+def aptTesting():
+    yield
+    uninstalTestPkg()
 
 
 class TestUnix:
-    def test_accessibleNames(self):
-        unix._apt_pkgs_installation_check
-        unix._copy
-        unix._getRefreshRate
-        unix._paste
+    def test_apt_check_return_none(self):
+        assert unix._apt_check(["flex"]) is None
 
-    def test_copy(self, openTextEditor):
-        # insert text into clipboard
-        unix._copy(openTextEditor)
-        sik.hotkey(sik.Key.ctrl, "v")
+    @pytest.mark.parametrize(
+        "test_pkgs, expected",
+        [
+            (["test"], "Installing packages: test\n"),
+            (["test", "test_pkg_test"], "Installing packages: test, test_pkg_test\n"),
+            (["flex"], "The requirements have already been installed\n"),
+        ],
+    )
+    def test_apt_check_return_print(self, mocker, capsys, test_pkgs, expected):
+        mocker.patch("src.pysikuli._unix._apt_install", return_value=None)
+        unix._apt_check(test_pkgs)
 
-        # close and save
-        sik.hotkey(sik.Key.ctrl, "q")
-        sik.tap(sik.Key.enter), sik.sleep(0.3)
-        path = os.path.join(os.getcwd(), "test.txt")
-        sik.write(path)
-        sik.tap(sik.Key.enter), sik.sleep(1.5)
-
-        # get the result
-        with open(path) as f:
-            result = f.read()
-
-        # cleaning
-        os.remove(path)
-
-        assert result == f"{openTextEditor}\n"
-
-    def test_paste(self, openTextEditor):
-        # type text
-        sik.write(openTextEditor)
-        sik.hotkey(sik.Key.ctrl, "a")
-        sik.hotkey(sik.Key.ctrl, "c")
-
-        result = unix._paste()
-
-        # close and save
-        sik.hotkey(sik.Key.ctrl, "q"), sik.sleep(0.3)
-        sik.tap(sik.Key.tab)
-        sik.tap(sik.Key.enter)
-
-        assert result == openTextEditor
-
-    def test_apt_pkgs_installation_check_return_none(self):
-        assert (
-            unix._apt_pkgs_installation_check(
-                ["libgirepository1.0-dev", "libcairo2-dev", "xinput"]
-            )
-            is None
-        )
-
-    @pytest.mark.parametrize("test_pkgs", [["test"], ["test", "test_pkg_test"]])
-    def test_apt_pkgs_installation_check_return_print(self, capsys, test_pkgs):
-        unix._apt_pkgs_installation_check(test_pkgs)
         captured = capsys.readouterr().out
+        # out, err = capsys.readouterr()
 
-        str_test_pkgs = ""
-        for pkg in test_pkgs:
-            str_test_pkgs = f"{str_test_pkgs} {pkg}"
-
-        str_test_pkgs_reversed = ""
-        test_pkgs = test_pkgs[::-1]
-        for pkg in test_pkgs:
-            str_test_pkgs_reversed = f"{str_test_pkgs_reversed} {pkg}"
-
-        try:
-            expected_output = (
-                f"\n\nPlease install the missing packages:{str_test_pkgs}\n\n"
-                f"On Ubuntu/Debian use this command: sudo apt install{str_test_pkgs}\n"
-            )
-            assert captured == expected_output
-        except AssertionError:
-            expected_output = (
-                f"\n\nPlease install the missing packages:{str_test_pkgs_reversed}\n\n"
-                f"On Ubuntu/Debian use this command: sudo apt install{str_test_pkgs_reversed}\n"
-            )
-            assert captured == expected_output
+        assert captured == expected
 
     def test_getRefreshRate(self):
         assert isinstance(unix._getRefreshRate(), int)

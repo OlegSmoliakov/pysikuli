@@ -7,13 +7,9 @@ import pymsgbox as pmb
 from pynput.keyboard import Key
 from pynput.mouse import Button
 
-
-_REQUIRED_PKGS_LINUX = ["libgirepository1.0-dev", "libcairo2-dev", "xinput"]
-_MONITOR_REGION = pmc.getPrimary().box
-_MONITOR_RESOLUTION = (
-    _MONITOR_REGION[2],
-    _MONITOR_REGION[3],
-)
+_MAX_SPEED = 1000
+_REG_FORMAT = "x1y1x2y2"
+_REQUIRED_PKGS_LINUX = ["libportaudio2"]
 _SUPPORTED_PIC_FORMATS = [
     "bmp",
     "jfif",
@@ -43,22 +39,22 @@ def getOS():
 
 
 def getPlatformModule(OSX, WIN, UNIX):
+    if OSX + WIN + UNIX != 1:
+        raise TypeError("Please select only 1 platform")
     if OSX:
         from . import _osx as platformModule
     elif WIN:
         from . import _win as platformModule
     elif UNIX:
         from . import _unix as platformModule
-    else:
-        raise OSError(f"No OS is selected")
     return platformModule
 
 
 def getDefaultFailsafeHotkey(OSX):
     if OSX:
-        return [Key.alt, Key.shift, "c"]
+        return [(Key.alt, Key.shift, "c")]
     else:
-        return [Key.ctrl, Key.alt, "z"]
+        return [(Key.ctrl, Key.alt, "z")]
 
 
 class Config:
@@ -68,9 +64,44 @@ class Config:
 
     # TODO: Sleep value should vary with the platform. http://stackoverflow.com/q/1133857
 
-    # platform selection
-    OSX, WIN, UNIX = getOS()
-    _platformModule = getPlatformModule(OSX, WIN, UNIX)
+    def __init__(self):
+        self.MONITOR_REGION = pmc.getPrimary().box
+        self.MONITOR_RESOLUTION = (
+            self.MONITOR_REGION[2],
+            self.MONITOR_REGION[3],
+        )
+
+        # platform selection
+        self._OSX, self._WIN, self._UNIX = getOS()
+        self._platformModule = getPlatformModule(self._OSX, self._WIN, self._UNIX)
+        self.FAILSAFE_HOTKEY = getDefaultFailsafeHotkey(self.OSX)
+
+        # 400 and 100 is min size of pymsgbox window
+        root_x = int(self.MONITOR_RESOLUTION[0] / 2 - 400 / 2)
+        root_y = int(self.MONITOR_RESOLUTION[1] / 2 - 100 / 2)
+
+        # pymsgbox parameters
+        self._ROOT_WINDOW_POSITION = (root_x, root_y)
+        self._OK_TEXT = "OK"
+        self._CANCEL_TEXT = "Cancel"
+        self._PROPORTIONAL_FONT_SIZE = 10
+        self._MONOSPACE_FONT_SIZE = 9
+        self._TEXT_ENTRY_FONT_SIZE = 12
+
+        self._DEBUG = False
+        self.IGNORE_LIST_FOR_CLEANUP_PICS = [".git", ".github"]
+
+    @property
+    def OSX(self):
+        return self._OSX
+
+    @property
+    def WIN(self):
+        return self._WIN
+
+    @property
+    def UNIX(self):
+        return self._UNIX
 
     # if the time is less than this value, the sleep time isn't accurate enough
     MIN_SLEEP_TIME = 0.02
@@ -84,26 +115,15 @@ class Config:
     FAILSAFE = True
     FAILSAFE_REGIONS = [(0, 0, 0, 0)]
 
-    @property
-    def FAILSAFE_HOTKEY(self):
-        if self._FAILSAFE_HOTKEY is None:
-            self._FAILSAFE_HOTKEY = getDefaultFailsafeHotkey(self.OSX)
-        return self._FAILSAFE_HOTKEY
-
-    @FAILSAFE_HOTKEY.setter
-    def FAILSAFE_HOTKEY(self, val):
-        self._FAILSAFE_HOTKEY = val
-
     # Constants for image search function
 
     # This option almost doubles the speed by using compressed images in image recognition,
     # but degrades unambiguous image recognition.
     # Use this parameter as a compression divider, for instance:
-    # If the value is 1 - the image size doesn't change (width / 1 and height / 1)
-    # If the value is 2 - the image will become x4 times smaller, (width / 2 and height / 2).
-    # If the value greater than 4, the speed will increase slightly.
-    # Divider must be positive and can be float
-    COMPRESSION_RATIO = 2
+    # If percent is 100 - the image size doesn't change)
+    # If percent is 50 - the image will become x4 times smaller, (width * 50 / 100 and height * 50 / 100).
+    # If the value lower than 25, the speed will increase slightly.
+    PERCENT_IMAGE_DOWNSIZING = 50
 
     # This parameter increases speed by about 30%, but degrades unambiguous image recognition
     GRAYSCALE = True
@@ -113,11 +133,10 @@ class Config:
     # The time limit for search functions. If it is exceeded, None is returned
     MAX_SEARCH_TIME = 2.0
 
-    REFRESH_RATE = None
-    if not REFRESH_RATE:
-        REFRESH_RATE = int(pmc.getPrimary().frequency)
-        if REFRESH_RATE <= 0:
-            REFRESH_RATE = 60
+    REFRESH_RATE = int(pmc.getPrimary().frequency)
+    # in case getPrimary returns something strange.
+    if REFRESH_RATE <= 0:
+        REFRESH_RATE = 60
 
     # Each TIME_STEP in seconds a image searching takes a new screenshot for next analysis
     # Each TIME_STEP in seconds tap and write takes after each key press
@@ -125,14 +144,6 @@ class Config:
 
     # If active, pysikuli will wait for the window management functions to complete their execution.
     WINDOW_WAITING_CONFIRMATION = True
-
-    @property
-    def MONITOR_REGION(self) -> tuple[int, int, int, int]:
-        return _MONITOR_REGION
-
-    @property
-    def MONITOR_RESOLUTION(self) -> tuple[int, int]:
-        return _MONITOR_RESOLUTION
 
     # Constants for pymsgbox module
     @property
@@ -160,7 +171,7 @@ class Config:
     @ROOT_WINDOW_POSITION.setter
     def ROOT_WINDOW_POSITION(self, val: tuple[int]):
         self._ROOT_WINDOW_POSITION = val
-        pmb.rootWindowPosition = f"+{val[0]}" f"+{val[1]}"
+        pmb.rootWindowPosition = f"+{val[0]}+{val[1]}"
 
     @property
     def PROPORTIONAL_FONT_SIZE(self):
@@ -202,6 +213,7 @@ class Config:
     SOUND_FINISH_PATH = os.path.join(
         os.path.dirname(__file__), "tools_data/_finish.mp3"
     )
+    SOUND_BLEEP_PATH = os.path.join(os.path.dirname(__file__), "tools_data/_bleep.mp3")
 
     DEBUG_SETTINGS = {
         "PAUSE_BETWEEN_ACTION": 0.5,
@@ -212,7 +224,7 @@ class Config:
     _DEFAULT_SETTINGS = {
         "PAUSE_BETWEEN_ACTION": 0,
         "TIME_STEP": 0,
-        "MOUSE_SPEED": 1,
+        "MOUSE_SPEED": 2,
     }
 
     @property
@@ -228,22 +240,6 @@ class Config:
         elif val == False:
             for key, value in self._DEFAULT_SETTINGS.items():
                 setattr(self, key, value)
-
-    def __init__(self):
-        self._OK_TEXT = "OK"
-        self._CANCEL_TEXT = "Cancel"
-
-        # 400 and 100 is min size of pymsgbox window
-        root_x = int(_MONITOR_RESOLUTION[0] / 2 - 400 / 2)
-        root_y = int(_MONITOR_RESOLUTION[1] / 2 - 100 / 2)
-
-        self._ROOT_WINDOW_POSITION = (root_x, root_y)
-        self._PROPORTIONAL_FONT_SIZE = 10
-        self._MONOSPACE_FONT_SIZE = 9
-        self._TEXT_ENTRY_FONT_SIZE = 12
-
-        self._DEBUG = False
-        self._FAILSAFE_HOTKEY = None
 
 
 config = Config()

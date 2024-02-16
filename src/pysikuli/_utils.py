@@ -2,41 +2,40 @@ import os
 import re
 import time
 
-from send2trash import send2trash
+import soundfile as sf
+
 from gitignore_parser import parse_gitignore as pgi
 
-from ._main import getPixel, copyToClip, mousePosition, mouseMoveRelative
-from ._config import config, _SUPPORTED_PIC_FORMATS
+from ._main import getPixelRGB, copyToClip, mousePosition, mouseMoveRelative, deleteFile
+from ._config import config, _SUPPORTED_PIC_FORMATS, _REG_FORMAT
+
+try:
+    import sounddevice as sd
+except:
+    if config.UNIX:
+        from ._unix import _apt_check
+        from ._config import _REQUIRED_PKGS_LINUX
+
+        _apt_check(_REQUIRED_PKGS_LINUX)
 
 
-def _setPlaysound():
-    def _playsound(sound):
-        pass
-
+def playSound(file_path):
     if config.SOUND_ON:
-        try:
-            from playsound import playsound
-        except ModuleNotFoundError as e:
-            print(
-                "Playsound install error, please try to use this commmand: \n"
-                "pip install git+https://github.com/killjoy1221/playsound.git \n"
-                "or disable this notification by this code: \n"
-                "pysikuli.config.SOUND_ON = False \n\n"
-            )
-            return _playsound
+        wave, sample_rate = sf.read(file_path)
 
-        return playsound
-    else:
-        return _playsound
+        sd.play(wave, sample_rate)
+        sd.wait()
 
 
 def getLocation(interval=0.5):
-    playsound = _setPlaysound()
     check_3 = [0, 0, 0]
 
     while True:
+        if interval > 0.4:
+            playSound(config.SOUND_BLEEP_PATH)
+
         x, y = mousePosition()
-        text = f"Current XY: [{x}, {y}]  RGB: {getPixel((x, y))}"
+        text = f"Current XY: [{x}, {y}]  RGB: {getPixelRGB((x, y))}"
         print(text)
 
         check_3[0] = check_3[1]
@@ -48,15 +47,15 @@ def getLocation(interval=0.5):
             print(text)
 
             copyToClip(f"({x}, {y})")
-            playsound(config.SOUND_CAPTURE_PATH)
+            playSound(config.SOUND_CAPTURE_PATH)
             break
 
         time.sleep(interval)
 
-    playsound(config.SOUND_FINISH_PATH)
+    playSound(config.SOUND_FINISH_PATH)
 
 
-def _getRegion(reg_format, interval=0.5, test_interrupt_offset=0):
+def getRegion(interval=0.5):
     """
     getRigion helps to determine the Region coordinates.
 
@@ -67,18 +66,24 @@ def _getRegion(reg_format, interval=0.5, test_interrupt_offset=0):
 
     Args:
         `interval` (float): time in seconds, which uses for delay
-        between each mouse posuition capture  . Defaults to 0.5.
+        between each mouse posuition capture. Defaults to 0.5.
 
     Returns:
         updated clipboard with prepared region like: "Region(1, 2, 3, 4)"
         also print this region in console
     """
-    playsound = _setPlaysound()
+    return _getRegion(_REG_FORMAT, interval)
+
+
+def _getRegion(reg_format, interval=0.5, test_interrupt_offset=0):
     points = 2
     check_3 = [0, 0, 0]
     lastLoc = [0, 0]
 
     while points > 0:
+        if interval > 0.4:
+            playSound(config.SOUND_BLEEP_PATH)
+
         x, y = mousePosition()
         text = "Current XY: [" + str(x) + ", " + str(y) + "]"
         print(text)
@@ -95,7 +100,7 @@ def _getRegion(reg_format, interval=0.5, test_interrupt_offset=0):
                 second_pos = [x, y]
             lastLoc = [x, y]
 
-            playsound(config.SOUND_CAPTURE_PATH)
+            playSound(config.SOUND_CAPTURE_PATH)
             print(f"Corner captured {points} left")
 
         time.sleep(interval)
@@ -109,7 +114,6 @@ def _getRegion(reg_format, interval=0.5, test_interrupt_offset=0):
 
     if reg_format == "x1y1x2y2":
         reg = [leftUpLoc[0], leftUpLoc[1], rightDownLoc[0], rightDownLoc[1]]
-        print(f"\nRegion format set: {reg_format}")
     elif reg_format == "x1y1wh":
         reg = [
             leftUpLoc[0],
@@ -117,112 +121,98 @@ def _getRegion(reg_format, interval=0.5, test_interrupt_offset=0):
             rightDownLoc[0] - leftUpLoc[0],
             rightDownLoc[1] - leftUpLoc[1],
         ]
-        print(f"\nRegion format set: {reg_format}")
     else:
         raise ValueError("wrong reg_format")
+    print(f"\nRegion format is set to: {reg_format}")
 
     copyToClip(f"Region({reg[0]}, {reg[1]}, {reg[2]}, {reg[3]})")
     print(
-        f"Region = ({reg[0]}, {reg[1]}, {reg[2]}, {reg[3]}), already copied to the clipboard"
+        f"Region({reg[0]}, {reg[1]}, {reg[2]}, {reg[3]}), already copied to the clipboard"
     )
 
-    playsound(config.SOUND_FINISH_PATH)
+    playSound(config.SOUND_FINISH_PATH)
 
 
-def cleanupPics(pics_folder_path):
-    assert os.path.isabs(pics_folder_path)
-    pics_folder_name = os.path.basename(pics_folder_path)
-    root_path = os.getcwd()
-    ignore = pgi(os.path.join(root_path, ".gitignore"))
-    ignore_list = [".git", ".github"]
+class Cleanup(object):
+    def __init__(self, root_path, pics_folder_prefix_in_code, formats: list) -> None:
+        self.ROOT_PATH = root_path
+        self.PICS_FOLDER_PREFIX_IN_CODE = pics_folder_prefix_in_code
+        self.PREPARED_FORMATS = "|".join(formats)
 
-    formats = ""
-    for format in _SUPPORTED_PIC_FORMATS:
-        formats += f"{format}|"
-    formats = formats[:-1]
+    def isIgnored(self, file_name: str):
+        ignored = pgi(os.path.join(self.ROOT_PATH, ".gitignore"))
+        ans = (
+            ignored(file_name)
+            if file_name not in config.IGNORE_LIST_FOR_CLEANUP_PICS
+            else True
+        )
+        return ans
 
-    def isIgnored(file):
-        return ignore(file) if file not in ignore_list else True
-
-    def isDir(file_path):
-        return os.path.isdir(file_path) and "__" not in os.path.basename(file_path)
-
-    def isPyFile(file):
-        return re.search(r"\.py", file)
-
-    def picParse(file_path: str):
-        found_paths = []
-        found_names = []
-
+    def picParse(self, file_path: os.PathLike):
         with open(file_path) as f:
             code = f.read()
+        #        # e.g. (pics/image_name.png)     # ["']pics[\\\/]\S*\.(?:png|jpg|tif)["']
+        pattern = rf"""["']{self.PICS_FOLDER_PREFIX_IN_CODE}[\\\/]\S*\.(?:{self.PREPARED_FORMATS})["']"""
+        matches = re.findall(pattern, code)
 
-        #                     # (pics/image_name.png)   # (pics[\\\\\/]\S*.)(png|jpg|tif)
-        matches = re.findall(rf"({pics_folder_name}[\\\\\/]\S*\.)({formats})", code)
-
-        for match in matches:
-            match_name = match[0] + match[1]
-            match_name = os.path.normpath(match_name)
-            match_path = os.path.join(root_path, match_name)
-            found_paths.append(match_path)
-            found_names.append(match_name)
-        return found_paths, found_names
-
-    def findAllPicsPathsInProject(path):
         found_paths = []
-        found_names = []
+
+        pattern = """['"]"""
+        for match in matches:
+            relative_path = os.path.normpath(re.sub(pattern, "", match))
+            found_paths.append(relative_path)
+
+        return found_paths
+
+    def findAllPicsPathsInProject(self, path):
+        found_paths = []
         files = os.listdir(path)
-        for file in files:
-            file_path = os.path.join(path, file)
-            if isIgnored(file):
+        for file_name in files:
+            file_path = os.path.join(path, file_name)
+            if self.isIgnored(file_name):
                 pass
-            elif isDir(file_path):
-                findAllPicsPathsInProject(file_path)
-            elif isPyFile(file):
-                fnd_paths, fnd_names = picParse(file_path)
+            elif os.path.isdir(file_path):
+                self.findAllPicsPathsInProject(file_path)
+            elif file_name.endswith(".py"):
+                fnd_paths = self.picParse(file_path)
                 found_paths += fnd_paths
-                found_names += fnd_names
 
-        return found_paths, found_names
+        return found_paths
 
-    def getStoredPics():
+    def getStoredPics(self, pics_folder_path):
         stored = os.listdir(pics_folder_path)
         stored = [
-            file_name for file_name in stored if re.search(f".{formats}", file_name)
+            os.path.join(pics_folder_path, file_name)
+            for file_name in stored
+            if re.search(f".{self.PREPARED_FORMATS}", file_name)
         ]
-        stored = [os.path.join(pics_folder_path, file_name) for file_name in stored]
         return stored
 
-    def getUnusedPics():
-        stored = getStoredPics()
-        used, _ = findAllPicsPathsInProject(root_path)
-        return set(stored) - set(used)
-
-    def prompt_user(pic: str):
+    @staticmethod
+    def promptUser(pic: str):
         bold = "\033[1m"
         end = "\033[0m"
 
         print(
             f"\nAre you sure that you want to move to trash '{os.path.basename(pic)}'?\n"
-            f"enter {bold}0{end} to skip\n"
-            f"enter {bold}1{end} to skip all\n"
-            f"enter {bold}2{end} to delete\n"
-            f"enter {bold}3{end} to delete all unused pictures\n"
+            f"enter {bold}1{end} to skip\n"
+            f"enter {bold}2{end} to skip all\n"
+            f"enter {bold}3{end} to delete\n"
+            f"enter {bold}4{end} to delete all unused pictures\n"
         )
 
         while True:
             try:
                 user_input = int(input())
-                if user_input in [0, 1, 2, 3]:
+                if user_input in [1, 2, 3, 4]:
                     return user_input
                 else:
-                    print("Invalid input. Please enter 0, 1, 2, or 3.")
+                    print("Invalid input. Please enter 1, 2, 3, or 4.")
             except ValueError:
                 print("Invalid input. Please enter a number.")
 
-    def deleteUnused():
+    def deleteUnused(self, unused):
         deleted_files = 0
-        unused = getUnusedPics()
 
         if len(unused) < 1:
             print("Cleanup completed, 0 files to delete")
@@ -234,23 +224,23 @@ def cleanupPics(pics_folder_path):
 
         temp_unused = set(unused)
         for pic in unused:
-            user_choice = prompt_user(pic)
+            user_choice = self.promptUser(pic)
 
-            if user_choice == 0:
+            if user_choice == 1:
                 print("Skipping operation.")
                 pass
-            elif user_choice == 1:
+            elif user_choice == 2:
                 print(f"Skipping {len(temp_unused)} files. Exiting.")
                 break
-            elif user_choice == 2:
+            elif user_choice == 3:
                 print(f"Deleting {pic}.")
                 deleted_files += 1
                 temp_unused.remove(pic)
-                send2trash(pic)
-            elif user_choice == 3:
+                deleteFile(pic)
+            elif user_choice == 4:
                 print("Deleting all unused pictures.")
                 for _pic in temp_unused:
-                    send2trash(_pic)
+                    deleteFile(_pic)
                     deleted_files += 1
                 break
             else:
@@ -258,4 +248,25 @@ def cleanupPics(pics_folder_path):
 
         print(f"Cleanup completed, {deleted_files} files deleted")
 
-    return deleteUnused()
+
+def cleanupPics(
+    pics_folder_path="pics",
+    pics_folder_prefix_in_code="pics",
+    root_path=os.getcwd(),
+    formats: list = _SUPPORTED_PIC_FORMATS,
+):
+    if not os.path.isabs(pics_folder_path):
+        os.path.abspath(pics_folder_path)
+    assert os.path.isdir(pics_folder_path)
+    assert os.path.isdir(root_path)
+
+    cleanup = Cleanup(root_path, pics_folder_prefix_in_code, formats)
+
+    pics_folder_path = os.path.normpath(pics_folder_path)
+
+    stored = cleanup.getStoredPics(pics_folder_path)
+    used = cleanup.findAllPicsPathsInProject(root_path)
+
+    unused = set(stored) - set(used)
+
+    return cleanup.deleteUnused(unused)

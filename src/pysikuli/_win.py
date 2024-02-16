@@ -5,8 +5,6 @@ try:
 except:
     raise ImportError("Please install win32gui")
 
-import pyperclip
-
 from pynput.keyboard import Key
 
 
@@ -88,14 +86,6 @@ class ActiveWindow:
         """put the window in the foreground"""
         print(self.final_hwnd, "selected")
         w32.SetForegroundWindow(self.final_hwnd)
-
-
-def _copy(text):
-    return pyperclip.copy(text)
-
-
-def _paste():
-    return pyperclip.paste()
 
 
 # NOTE depricated
