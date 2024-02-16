@@ -6,6 +6,7 @@ build:
     python: "3.12"
   apt_packages:
     - xvfb
+    - libportaudio2
   jobs:
     pre_create_environment:
       - Xvfb :0 &
