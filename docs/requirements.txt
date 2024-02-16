@@ -8,3 +8,5 @@ send2trash == 1.8.2
 gitignore-parser == 0.1.11
 opencv-python == 4.8.1.78
 mss == 9.0.1
+sounddevice == 0.4.6
+soundfile == 0.12.1

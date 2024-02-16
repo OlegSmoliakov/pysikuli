@@ -54,7 +54,7 @@ Screenshot functions
 .. autofunction:: pysikuli.existFromFolder
 .. autofunction:: pysikuli.find
 .. autofunction:: pysikuli.grab
-.. autofunction:: pysikuli.getPixel
+.. autofunction:: pysikuli.getPixelRGB
 .. autofunction:: pysikuli.wait
 .. autofunction:: pysikuli.waitWhileExist
 

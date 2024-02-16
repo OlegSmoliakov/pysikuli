@@ -10,7 +10,7 @@ This is a fast cross-platform python module for gui automation
 -  [Quickstart](#quickstart)
 -  [Small Example](#small-example)
 -  [How reach the max speed](#how-reach-the-max-speed)
--  [Instalation](#installation)
+-  [Installation](#installation)
 -  [VS Code add-ons](#vs-code-add-ons)
 
 </details>
