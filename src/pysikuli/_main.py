@@ -144,17 +144,17 @@ class Region(object):
         image: str,
         grayscale: bool = None,
         precision: float = None,
-        pixel_colors: tuple = None,
+        rgb_diff: float = None,
     ):
         _match = exist(
             image=image,
             region=self.reg,
             grayscale=grayscale,
             precision=precision,
-            pixel_colors=pixel_colors,
+            rgb_diff=rgb_diff,
         )
         if not _match:
-            if pixel_colors:
+            if rgb_diff:
                 logging.info(
                     f"has() couldn't find the specific pixel in the region: {image}"
                 )
@@ -169,7 +169,7 @@ class Region(object):
         max_search_time: float = None,
         grayscale: bool = None,
         precision: float = None,
-        pixel_colors: tuple = None,
+        rgb_diff: float = None,
     ):
         return wait(
             image=image,
@@ -178,7 +178,7 @@ class Region(object):
             time_step=self.time_step,
             grayscale=grayscale,
             precision=precision,
-            pixel_colors=pixel_colors,
+            rgb_diff=rgb_diff,
         )
 
     def waitWhileExist(
@@ -187,7 +187,7 @@ class Region(object):
         max_search_time: float = None,
         grayscale: bool = None,
         precision: float = None,
-        pixel_colors: tuple = None,
+        rgb_diff: float = None,
     ):
         return waitWhileExist(
             image=image,
@@ -196,7 +196,7 @@ class Region(object):
             time_step=self.time_step,
             grayscale=grayscale,
             precision=precision,
-            pixel_colors=pixel_colors,
+            rgb_diff=rgb_diff,
         )
 
     def click(
@@ -251,7 +251,7 @@ class Region(object):
         max_search_time: float = None,
         grayscale: bool = None,
         precision: float = None,
-        pixel_colors: tuple = None,
+        rgb_diff: float = None,
     ):
         """find an image pattern
 
@@ -260,7 +260,7 @@ class Region(object):
             max_search_time (float, optional): _description_. Defaults to None.
             grayscale (bool, optional): _description_. Defaults to None.
             precision (float, optional): _description_. Defaults to None.
-            pixel_colors (tuple, optional): _description_. Defaults to None.
+            rgb_diff (float, optional): _description_. Defaults to None.
 
         Returns:
             _type_: _description_
@@ -272,7 +272,7 @@ class Region(object):
             time_step=self.time_step,
             grayscale=grayscale,
             precision=precision,
-            pixel_colors=pixel_colors,
+            rgb_diff=rgb_diff,
         )
 
     def existAny(
@@ -399,7 +399,7 @@ def wait(
     time_step: float = None,
     grayscale: bool = None,
     precision: float = None,
-    pixel_colors=None,
+    rgb_diff: float = None,
 ):
     if find(
         image=image,
@@ -408,7 +408,7 @@ def wait(
         time_step=time_step,
         grayscale=grayscale,
         precision=precision,
-        pixel_colors=pixel_colors,
+        rgb_diff=rgb_diff,
     ):
         return True
     else:
@@ -424,7 +424,7 @@ def waitWhileExist(
     time_step: float = None,
     grayscale: bool = None,
     precision: float = None,
-    pixel_colors: tuple = None,
+    rgb_diff: float = None,
 ):
     max_search_time = (
         max_search_time if max_search_time is not None else config.MAX_SEARCH_TIME
@@ -438,7 +438,7 @@ def waitWhileExist(
             region=region,
             grayscale=grayscale,
             precision=precision,
-            pixel_colors=pixel_colors,
+            rgb_diff=rgb_diff,
         )
         if _match == None:
             logging.info(f"waitWhileExist finished due to the pic disappearing")
@@ -458,7 +458,7 @@ def find(
     time_step: float = None,
     grayscale: bool = None,
     precision: float = None,
-    pixel_colors: tuple = None,
+    rgb_diff: float = None,
 ):
     """find an image pattern on the screen or specific region
 
@@ -469,7 +469,7 @@ def find(
         time_step (float, optional): _description_. Defaults to None.
         grayscale (bool, optional): _description_. Defaults to None.
         precision (float, optional): _description_. Defaults to None.
-        pixel_colors (tuple, optional): _description_. Defaults to None.
+        rgb_diff (float, optional): _description_. Defaults to None.
 
     Returns:
         _type_: _description_
@@ -486,7 +486,7 @@ def find(
             region=region,
             grayscale=grayscale,
             precision=precision,
-            pixel_colors=pixel_colors,
+            rgb_diff=rgb_diff,
         )
         if _match != None:
             return _match
@@ -513,7 +513,7 @@ def _coordinateNormalization(
     time_step: float = None,
     grayscale: bool = None,
     precision: float = None,
-    pixel_colors=None,
+    rgb_diff: float = None,
 ):
     if isinstance(loc_or_pic, (tuple | list)):
         return loc_or_pic
@@ -527,7 +527,7 @@ def _coordinateNormalization(
             time_step=time_step,
             grayscale=grayscale,
             precision=precision,
-            pixel_colors=pixel_colors,
+            rgb_diff=rgb_diff,
         )
         if _match is None:
             error_text = f"Couldn't find the picture: {loc_or_pic}"
@@ -663,7 +663,7 @@ def _matchProcessing(
     region=None,
     grayscale: bool = None,
     precision: float = None,
-    pixel_colors: tuple = None,
+    rgb_diff: float = None,
     tuple_region: tuple | list = None,
 ):
     grayscale = grayscale if grayscale is not None else config.GRAYSCALE
@@ -680,7 +680,7 @@ def _matchProcessing(
             f"The region ({np_region.shape}) is smaller than the image ({np_image.shape}) you are looking for"
         )
 
-    if grayscale and not pixel_colors:
+    if grayscale and not rgb_diff:
         np_image = cv2.cvtColor(np_image, cv2.COLOR_BGR2GRAY)
         np_region = cv2.cvtColor(np_region, cv2.COLOR_RGB2GRAY)
 
@@ -722,12 +722,41 @@ def _matchProcessing(
     return match_result
 
 
+def avgRgbValues(
+    np_image, np_cropped_region, diff_percent=config.PERCENT_RGB_DIFFERENCE
+):
+    img_avg_RGB = np.mean(np_image, axis=(0, 1))
+    reg_avg_RGB = np.mean(np_cropped_region, axis=(0, 1))
+    for i in range(3):
+        counting = img_avg_RGB[i] / reg_avg_RGB[i]
+        if counting > 1:
+            counting -= 1
+        else:
+            counting = 1 - counting
+
+        if counting * 100 > diff_percent:
+            return False
+
+    return True
+
+
+def cropRegToImgShape(np_region, tuple_region, max_loc_abs, img_width, img_height):
+    start_x = abs(tuple_region[0] - max_loc_abs[0])
+    end_x = abs(tuple_region[0] - (max_loc_abs[0] + img_width))
+
+    start_y = abs(tuple_region[1] - max_loc_abs[1])
+    end_y = abs(tuple_region[1] - (max_loc_abs[1] + img_height))
+
+    cropped_reg = np_region[start_y:end_y, start_x:end_x]
+    return cropped_reg
+
+
 def exist(
     image,
     region=None,
     grayscale: bool = None,
     precision: float = None,
-    pixel_colors: tuple = None,
+    rgb_diff: float = None,
     _tuple_region: tuple | list = None,
 ):
     # TODO: create full discription
@@ -761,7 +790,7 @@ def exist(
         region=region,
         grayscale=grayscale,
         precision=precision,
-        pixel_colors=pixel_colors,
+        rgb_diff=rgb_diff,
         tuple_region=_tuple_region,
     )
 
@@ -795,10 +824,14 @@ def exist(
         tuple_region=tuple_region,
     )
 
-    if not pixel_colors:
+    if not rgb_diff:
         return match_class
-    elif getPixelRGB(max_loc_rel, image_capture) == pixel_colors:
-        return match_class
+    else:
+        cropped_reg = cropRegToImgShape(
+            region_capture, tuple_region, max_loc_abs, img_width, img_height
+        )
+        if avgRgbValues(image_capture, cropped_reg, rgb_diff):
+            return match_class
 
 
 def existAny(
@@ -806,7 +839,7 @@ def existAny(
     region=None,
     grayscale: bool = None,
     precision: float = None,
-    pixel_colors: tuple = None,
+    rgb_diff: float = None,
 ):
     region, tuple_region = _regionToNumpyArray(reg=region)
     matches = []
@@ -817,7 +850,7 @@ def existAny(
             region=region,
             grayscale=grayscale,
             precision=precision,
-            pixel_colors=pixel_colors,
+            rgb_diff=rgb_diff,
             _tuple_region=tuple_region,
         )
         if match:
@@ -861,10 +894,10 @@ def existFromFolder(path, region=None, grayscale=None, precision=None):
 def existCount(
     image,
     region=None,
-    precision=None,
-    grayscale=None,
-    pixel_colors=None,
-    tuple_region=None,
+    precision: float = None,
+    grayscale: bool = None,
+    rgb_diff: float = None,
+    tuple_region: tuple[int, int, int, int] = None,
 ):
     # TODO: not yet debugged
     """
@@ -886,7 +919,7 @@ def existCount(
         region=region,
         grayscale=grayscale,
         precision=precision,
-        pixel_colors=pixel_colors,
+        rgb_diff=rgb_diff,
         tuple_region=tuple_region,
     )
     location = np.where(cv2_match >= precision)
@@ -919,7 +952,7 @@ def _getCenterLoc(img_width, img_height, loc: tuple):
 
 
 def saveNumpyImg(image: np.ndarray, image_name: str = None, path: str = None):
-    """Save a numpy array into a png image in root directory
+    """Save a numpy array into png image in root directory
 
     Args:
         image (np.ndarray): the variable with pic, that you want to save

@@ -127,6 +127,7 @@ class Config:
 
     # This parameter increases speed by about 30%, but degrades unambiguous image recognition
     GRAYSCALE = True
+    PERCENT_RGB_DIFFERENCE = 50
 
     # The value after which all search functions return positive
     MIN_PRECISION = 0.8

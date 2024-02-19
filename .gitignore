@@ -161,8 +161,6 @@ cython_debug/
 
 macbook_splitcam_manycam_obs.py
 draft.py
-req.txt
-setup.py
 /pics
 build_test
 launch.json
