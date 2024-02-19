@@ -769,7 +769,7 @@ def exist(
     image : path to the image file (see opencv imread for supported types)
     region : (x1, y1, x2, y2)
     precision : the higher, the lesser tolerant and fewer false positives are found default is 0.8
-    numpy_region : a PIL or numpy image, usefull if you intend to search the same unchanging region for several elements, must be stored in ``RGB format``
+    numpy_region : a PIL or numpy image, usefull if you intend to search the same unchanging region for several elements, must be stored in `RGB format`
 
     returns :
     the top left corner coordinates of the element if found as an array [x,y] or [-1,-1] if not
@@ -1533,10 +1533,12 @@ def closeWindow(window_title: str):
     This may trigger "Are you sure you want to quit?" dialogs or
     other actions that prevent the window from actually closing.
 
-    Args:
+    Args
+    ----
         window_title (str): close title
 
-    Returns:
+    Returns
+    -------
         bool: return 'True' if window is closed
     """
     return pwc.getWindowsWithTitle(window_title)[0].close()
@@ -1544,12 +1546,11 @@ def closeWindow(window_title: str):
 
 @titleCheck
 def maximizeWindow(window_title: str):
-    return pwc.getWindowsWithTitle(window_title)[0].maximize(
-        config.WINDOW_WAITING_CONFIRMATION
-    )
+    window = pwc.getWindowsWithTitle(window_title)[0]
+    return window.maximize(config.WINDOW_WAITING_CONFIRMATION)
 
 
-def _rootTimeoutNorm(root, timeout):
+def _rootTimeoutNorm(root: tuple[int, int], timeout: float):
     """Applied rootWindowPosition and return timeout in miliseconds
 
     Args
@@ -1601,7 +1602,7 @@ def popupPassword(
     root: tuple[int, int] = None,
     timeout: float = None,
 ):
-    """Displays a message box with text input, and OK & Cancel buttons. Typed characters appear as *.
+    """Displays a message box with text input, and OK & Cancel buttons. Typed characters appear as \*.
 
     Args
     ----
@@ -1613,7 +1614,7 @@ def popupPassword(
         timeout (float, optional): time in seconds after which message box will be closed.
     Returns
     -------
-        str | None : the entered text, None if Cancel was clicked, or "Timeout" if time has elapsed.
+        str | None : the entered text, None if Cancel was clicked, or `Timeout` if time has elapsed.
     """
     timeout = _rootTimeoutNorm(root, timeout)
     return pmb.password(text, title, default, mask, timeout=timeout)
