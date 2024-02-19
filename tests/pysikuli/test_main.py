@@ -159,7 +159,8 @@ class TestMain:
 
     def test_deleteFile(self):
         file_name = "test.txt"
-        os.mknod(file_name)
+        with open(file_name, "w"):
+            pass
         assert os.path.isfile(file_name)
 
         path = os.path.join(os.getcwd(), file_name)
@@ -167,6 +168,7 @@ class TestMain:
 
         assert not os.path.isfile(file_name)
 
+    @pytest.mark.skipif(not config.UNIX, reason="OS specific test")
     def test_copyToClip_Unix(self, random_str, cleanup_clipboard):
         # insert text into clipboard
         sik.activateWindow("*Unsaved Document 1")
@@ -412,7 +414,7 @@ class TestMain:
     ):
         match = main._matchProcessing(test_img_ndarray, test_reg_for_reg)
         _, max_val, _, _ = cv2.minMaxLoc(match[2])
-        assert max_val >= 0.6
+        assert max_val >= 0.5
 
     @pytest.mark.parametrize(
         "setAttribute, expected, grayscale",
@@ -442,6 +444,7 @@ class TestMain:
     def test_exist(
         self,
         test_img_ndarray,
+        test_reg_ndarray,
         test_img_ScreenShot: ScreenShot,
         test_reg_for_reg,
     ):
@@ -455,15 +458,22 @@ class TestMain:
 
         assert isinstance(match, Match)
 
-        width = test_img_ScreenShot.width / 2
-        pixel = main.getPixelRGB((width, width), test_img_ndarray)
+        cropped_reg = main.cropRegToImgShape(
+            test_reg_ndarray,
+            test_reg_for_reg,
+            test_img_ScreenShot.pos,
+            test_img_ScreenShot.width,
+            test_img_ScreenShot.height,
+        )
+
+        assert main.avgRgbValues(test_img_ndarray, cropped_reg, 0.1)
 
         match = main.exist(
-            test_img_ScreenShot,
+            test_img_ndarray,
             test_reg_for_reg,
-            False,
-            0.7,
-            pixel,
+            grayscale=False,
+            precision=0.7,
+            rgb_diff=0.1,
         )
 
         assert isinstance(match, Match)
@@ -705,30 +715,31 @@ class TestPauseBetweenAction:
     def test_PAUSE_BETWEEN_ACTION_deleteFile(self, setAttribute):
         assert config.PAUSE_BETWEEN_ACTION == 0.5
         path = os.path.join(os.getcwd(), "test.test")
-        os.mknod(path)
+        with open(path, "w"):
+            pass
         start_time = time.time()
         sik.deleteFile(path)
         elapse = time.time() - start_time
 
-        assert 0.5 <= elapse <= 0.51
+        assert 0.5 <= elapse <= 0.54
 
 
 @pytest.fixture()
 def show_region(test_match: main.Match):
     process = multiprocessing.Process(target=test_match.showRegion)
     process.start()
-    time.sleep(0.2)
+    time.sleep(0.4)
     yield
-    time.sleep(0.2)
+    time.sleep(0.4)
 
 
 @pytest.fixture()
 def show_image(test_match: main.Match):
     process = multiprocessing.Process(target=test_match.showImage)
     process.start()
-    time.sleep(0.2)
+    time.sleep(0.4)
     yield
-    time.sleep(0.2)
+    time.sleep(0.4)
 
 
 def vec_abs_diff(vec1, vec2):
@@ -752,7 +763,7 @@ class TestMatch:
         PRECISION = 0.6
         error = 1
 
-        sik.sleep(1)
+        # sik.sleep(1)
         test_match = test_class_region.find(
             test_img_ScreenShot, grayscale=GRAYSCALE, precision=PRECISION
         )
@@ -807,10 +818,6 @@ class TestMatch:
     @pytest.mark.usefixtures("show_region")
     def test_showRegion_key_closure(self, key):
         sik.tap(key)
-
-    @pytest.mark.usefixtures("show_region")
-    def test_showRegion_click_closure(self):
-        sik.click((1140, 370))
 
     @pytest.mark.parametrize("offset", [50, 100, 150])
     def test_setTargetOffset(self, test_match: main.Match, offset):

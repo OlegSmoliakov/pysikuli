@@ -159,7 +159,7 @@ class Cleanup(object):
 
         pattern = """['"]"""
         for match in matches:
-            relative_path = os.path.normpath(re.sub(pattern, "", match))
+            relative_path = re.sub(pattern, "", match)
             found_paths.append(relative_path)
 
         return found_paths

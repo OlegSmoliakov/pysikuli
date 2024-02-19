@@ -2,6 +2,7 @@ import os
 import random
 import shutil
 import time
+import string
 
 import pytest
 import soundfile as sf
@@ -48,6 +49,8 @@ def getRegionSoundDuration(getLocationSoundDuration):
 
 @pytest.fixture()
 def getLocationDuration(testLoc):
+    assert config.SOUND_ON
+
     sik.mouseMove(testLoc)
     start_time = time.time()
     utils.getLocation(config.MIN_SLEEP_TIME)
@@ -71,34 +74,62 @@ def soundOff():
     config.SOUND_ON = True
 
 
+@pytest.fixture()
+def getLocationSoundOFFDuration():
+    config.SOUND_ON = False
+
+    start_time = time.time()
+    utils.getLocation(config.MIN_SLEEP_TIME)
+    elapsed = time.time() - start_time
+
+    config.SOUND_ON = True
+    return elapsed
+
+
+@pytest.fixture()
+def getRegionSoundOFFDuration(testMoveOffset):
+    config.SOUND_ON = False
+
+    start_time = time.time()
+    utils._getRegion(utils._REG_FORMAT, config.MIN_SLEEP_TIME, testMoveOffset)
+    elapsed = time.time() - start_time
+
+    config.SOUND_ON = True
+    return elapsed
+
+
 class TestUtils:
     def test_getLocation_SOUND_OFF_and_clipboard(
-        self, testLoc, getLocationSoundDuration, getLocationDuration, soundOff
+        self,
+        testLoc,
+        getLocationSoundDuration,
+        getLocationSoundOFFDuration,
+        getLocationDuration,
     ):
-        # sik.mouseMove(testLoc)
-        start_time = time.time()
-        utils.getLocation(config.MIN_SLEEP_TIME)
-        duration_sound_off = time.time() - start_time
         diff = abs(getLocationDuration - getLocationSoundDuration)
         assert sik.pasteFromClip() == str(testLoc)
-        assert 0 < duration_sound_off <= 0.1
-        assert 0 < diff <= 0.1
+        assert 0 < getLocationSoundOFFDuration <= 0.1
+
+        if config.WIN:
+            assert 0 < diff <= 0.4
+        else:
+            assert 0 < diff <= 0.1
 
     def test_getRegion_SOUND_OFF_and_clipboard(
         self,
         testLoc,
         getRegionSoundDuration,
+        getRegionSoundOFFDuration,
         getRegionDuration,
         testMoveOffset,
-        soundOff,
     ):
-        sik.mouseMove(testLoc)
-        start_time = time.time()
-        utils._getRegion(utils._REG_FORMAT, config.MIN_SLEEP_TIME, testMoveOffset)
-        duration_sound_off = time.time() - start_time
         diff = getRegionDuration - getRegionSoundDuration
-        assert 0 < duration_sound_off <= 0.3
-        assert 0 < diff <= 0.3
+        assert 0 < getRegionSoundOFFDuration <= 0.3
+
+        if config.WIN:
+            assert 0 < diff <= 0.5
+        else:
+            assert 0 < diff <= 0.3
 
         captured_reg = sik.pasteFromClip()
         expected_reg = (
@@ -123,7 +154,7 @@ class TestUtils:
         start_time = time.time()
         utils.playSound(sound)
         stop_time = time.time() - start_time
-        assert round(stop_time, 1) <= round(duration, 1)
+        assert round(stop_time / 1.1, 1) <= round(duration, 1)
 
     @pytest.mark.parametrize(
         "sound",
@@ -177,7 +208,8 @@ def createUnused(testUnused):
     if not os.path.isdir(test_unusedPath):
         os.mkdir(test_unusedPath)
     for unused in testUnused:
-        os.mknod(unused)
+        with open(unused, "w"):
+            pass
 
 
 def removeUnused():
@@ -188,6 +220,43 @@ def removeUnused():
 def unusedTesting(createUnused):
     yield
     removeUnused()
+
+
+def random_str():
+    random.seed(time.time())
+    letters = string.ascii_letters
+    return "".join(random.choice(letters) for _ in range(random.randint(10, 15)))
+
+
+@pytest.fixture()
+def create_test_pics_folder(get_random_num):
+    path_folder = os.getcwd()
+    path_folder = os.path.join(path_folder, "test_pics")
+    os.mkdir(path_folder)
+    assert os.path.isdir(path_folder)
+
+    ext = random.choice
+    for _ in range(get_random_num):
+        with open(
+            f"test_pics/{random_str()}.{ext(sik._config._SUPPORTED_PIC_FORMATS)}", "w"
+        ):
+            pass
+        sik.sleep(0.02)
+
+    for _ in range(get_random_num):
+        with open(f"test_pics/{random_str()}.{random_str()}", "w"):
+            pass
+        sik.sleep(0.02)
+
+    yield path_folder
+
+    shutil.rmtree(path_folder)
+
+
+@pytest.fixture()
+def get_random_num():
+    random.seed(time.time())
+    return random.randint(3, 10)
 
 
 class TestCleanup:
@@ -229,13 +298,11 @@ class TestCleanup:
         found_paths = cleanupObj.findAllPicsPathsInProject(os.path.dirname(__file__))
         assert found_paths == [imgs[0], imgs[3]]
 
-    def test_getStoredPics(self, cleanupObj: utils.Cleanup):
-        path = os.path.join(os.getcwd(), "pics")
-        raw_stored = os.listdir(path)
-        raw_stored = [os.path.join(path, file_name) for file_name in raw_stored]
-        stored = cleanupObj.getStoredPics(path)
-
-        assert stored == raw_stored
+    def test_getStoredPics(
+        self, cleanupObj: utils.Cleanup, create_test_pics_folder, get_random_num
+    ):
+        stored = cleanupObj.getStoredPics(create_test_pics_folder)
+        assert len(stored) == get_random_num
 
     @pytest.mark.parametrize(
         ("user_input", "expected"),

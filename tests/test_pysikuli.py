@@ -90,8 +90,8 @@ class TestPysikuli:
 
         sik.sleep
 
-        if platform.system() != "Linux":
-            pytest.skip("OS specific test")
+    @pytest.mark.skipif(platform.system() != "Linux", reason="OS specific test")
+    def test_required_pkgs_check(self):
         sik.required_pkgs_check
 
 
