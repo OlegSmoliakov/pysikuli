@@ -1381,9 +1381,7 @@ def dragDrop(
 
 
 def titleCheck(wrappedFunction):
-    """
-    a decorator for window title searching
-    """
+    """Decorator to window title searching"""
 
     @functools.wraps(wrappedFunction)
     def titleCheckWrapper(*args, **kwargs):
@@ -1440,7 +1438,7 @@ def activateWindow(window_title: str):
     """
 
     win = pwc.getWindowsWithTitle(window_title)
-    win[0].activate(config.WINDOW_WAITING_CONFIRMATION)
+    return win[0].activate(config.WINDOW_WAITING_CONFIRMATION)
 
 
 def getWindowUnderMouse():
@@ -1461,8 +1459,17 @@ def activateWindowAt(location: tuple):
 
 @titleCheck
 def getWindowRegion(window_title: str):
-    """
-    get the region of a window by its name
+    """get the region of a window by it's name
+
+
+    Args
+    ----
+        window_title (str): full window name, e.g. 'Google — Mozilla Firefox'.
+        To get all available titles, use `pysikuli.getAllWindowsTitle()`
+
+    Returns
+    -------
+        Region : returns an object of class `Region`, if the window is within the screen boundaries
     """
     # NOTE: got these values on my laptop, may be different
     x1_offset = 8
@@ -1488,11 +1495,10 @@ def minimizeWindow(window_title: str):
 
 @titleCheck
 def closeWindow(window_title: str):
-    """
-    Closes this window. This may trigger "Are you sure you want to
-    quit?" dialogs or other actions that prevent the window from
-    actually closing. This is identical to clicking the X button on the
-    window.
+    """Closes this window. This is identical to clicking the X button on the window.
+
+    This may trigger "Are you sure you want to quit?" dialogs or
+    other actions that prevent the window from actually closing.
 
     Args:
         window_title (str): close title
@@ -1510,17 +1516,48 @@ def maximizeWindow(window_title: str):
     )
 
 
+def _rootTimeoutNorm(root, timeout):
+    """Applied rootWindowPosition and return timeout in miliseconds
+
+    Args
+    ----
+        root (tuple[int, int]): left top corner location.
+        timeout (float): time in seconds after which message box will be closed.
+
+    Returns
+    -------
+        int : timeout in miliseconds
+    """
+    if root:
+        pmb.rootWindowPosition = f"+{root[0]}+{root[1]}"
+
+    if timeout:
+        timeout = int(timeout * 1000)
+
+    return timeout
+
+
 def popupAlert(
     text="",
     title="",
-    root: tuple[int] = None,
+    root: tuple[int, int] = None,
     timeout: float = None,
 ):
-    if root:
-        pmb.rootWindowPosition = f"+{root[0]}+{root[1]}"
-    if timeout:
-        timeout *= 1000
-    pmb.alert(text, title, timeout=timeout)
+    """Displays a simple message box with text and a single OK button.
+
+    Args
+    ----
+        text (str, optional): message above input text.
+        title (str, optional): message box title.
+        root (tuple[int, int], optional): left top corner location. Defaults gets from config.ROOT_WINDOW_POSITION.
+        timeout (float, optional): time in seconds after which message box will be closed.
+
+    Returns
+    -------
+        str | None : the text of the button clicked on, or "Timeout" if time has elapsed.
+    """
+    timeout = _rootTimeoutNorm(root, timeout)
+    return pmb.alert(text, title, timeout=timeout)
 
 
 def popupPassword(
@@ -1528,58 +1565,76 @@ def popupPassword(
     title="",
     default="",
     mask="*",
-    root: tuple[int] = None,
+    root: tuple[int, int] = None,
     timeout: float = None,
 ):
-    """_summary_"""
-    if root:
-        pmb.rootWindowPosition = f"+{root[0]}+{root[1]}"
+    """Displays a message box with text input, and OK & Cancel buttons. Typed characters appear as *.
 
-    if timeout:
-        timeout *= 1000
-    pmb.password(text, title, default, mask, timeout=timeout)
+    Args
+    ----
+        text (str, optional): message above input text.
+        title (str, optional): message box title.
+        default (str, optional): default value for input text.
+        mask (str, optional): mask symbol for entered text.
+        root (tuple[int, int], optional): left top corner location. Defaults gets from config.ROOT_WINDOW_POSITION.
+        timeout (float, optional): time in seconds after which message box will be closed.
+    Returns
+    -------
+        str | None : the entered text, None if Cancel was clicked, or "Timeout" if time has elapsed.
+    """
+    timeout = _rootTimeoutNorm(root, timeout)
+    return pmb.password(text, title, default, mask, timeout=timeout)
 
 
 def popupPrompt(
     text="",
     title="",
     default="",
-    root: tuple[int] = None,
+    root: tuple[int, int] = None,
     timeout: float = None,
 ):
     """Displays a message box with text input, and OK & Cancel buttons.
-    Returns the text entered, or None if Cancel was clicked.
 
-    Args:
-        text (str, optional): message above input text. Defaults to "".
-        title (str, optional): message box title. Defaults to "".
-        default (str, optional): default value for input text. Defaults to "".
-        root (tuple[int], optional): left top corner location. Defaults to None.
-        timeout (float, optional): time in seconds after which message box will be closed. Defaults to None.
+    Args
+    ----
+        text (str, optional): message above input text.
+        title (str, optional): message box title.
+        default (str, optional): default value for input text.
+        root (tuple[int, int], optional): left top corner location. Defaults gets from config.ROOT_WINDOW_POSITION.
+        timeout (float, optional): time in seconds after which message box will be closed.
 
-    Returns:
-        str | None: entered text or default value
+    Returns
+    -------
+        str | None : the entered text, None if Cancel was clicked, or "Timeout" if time has elapsed.
     """
-    if root:
-        pmb.rootWindowPosition = f"+{root[0]}+{root[1]}"
-    if timeout:
-        timeout *= 1000
+    timeout = _rootTimeoutNorm(root, timeout)
     return pmb.prompt(text, title, default, timeout=timeout)
 
 
 def popupConfirm(
     text="",
     title="",
-    root: tuple[int] = None,
+    buttons=(config.OK_TEXT, config.CANCEL_TEXT),
+    root: tuple[int, int] = None,
     timeout: float = None,
 ):
-    if root:
-        pmb.rootWindowPosition = f"+{root[0]}+{root[1]}"
-    if timeout:
-        timeout *= 1000
-    return pmb.confirm(
-        text, title, (config.OK_TEXT, config.CANCEL_TEXT), timeout=timeout
-    )
+    """
+    Displays a message box with OK and Cancel buttons. Number and text of buttons can be customized.
+
+    Args
+    ----
+        text (str, optional): message above buttons.
+        title (str, optional): message box title.
+        buttons (tuple, optional): tuple of strings, each string represent a button.
+        root (tuple[int, int], optional): left top corner location. Defaults gets from config.ROOT_WINDOW_POSITION.
+        timeout (float, optional): time in seconds after which message box will be closed.
+
+    Returns
+    -------
+        str: the text of the button clicked on, or "Timeout" if time has elapsed.
+    """
+    timeout = _rootTimeoutNorm(root, timeout)
+    return pmb.confirm(text, title, buttons, timeout=timeout)
 
 
 @failSafeCheck

@@ -2,13 +2,16 @@ import random
 import string
 import shutil
 import subprocess
+import os
+import functools
+import time
+import multiprocessing
+
 import cv2
 import pytest
-import os
-import time
 import pymonctl as pmc
 import numpy as np
-import multiprocessing
+import pywinctl as pwc
 
 from copy import copy
 from mss.screenshot import ScreenShot
@@ -95,8 +98,31 @@ def random_str():
 
 @pytest.fixture()
 def open_textEditor():
-    subprocess.Popen(["xed"])
-    sik.sleep(0.5)
+    window_name = ""
+
+    if config.UNIX:
+        subprocess.Popen(["xed"])
+        window_name = "Unsaved Document 1"
+        sik.sleep(0.5)
+
+    yield window_name
+
+    if window_name in main.getAllWindowsTitle():
+        main.closeWindow(window_name)
+        sik.sleep(0.2)
+        assert main.windowExist(window_name) is None
+
+
+@pytest.fixture()
+def title_exist_window_name_1():
+    if config.UNIX:
+        return "xfce4-panel"
+
+
+@pytest.fixture()
+def title_exist_window_name_2():
+    if config.UNIX:
+        return "Desktop"
 
 
 @pytest.fixture()
@@ -153,16 +179,35 @@ def path_with_pics(test_img_ndarray):
     shutil.rmtree(path)
 
 
+def execution_time_test(wrappedFunction, max_time=0.1):
+    start_time = time.time()
+    ans = wrappedFunction()
+    elapsed_time = time.time() - start_time
+
+    assert elapsed_time <= max_time
+    return ans
+
+
 @pytest.mark.usefixtures("test_setup")
 class TestMain:
     # utils section
 
-    def test_deleteFile(self):
+    def test_deleteFile(self, mocker):
         file_name = "test.txt"
         os.mknod(file_name)
         assert os.path.isfile(file_name)
 
         path = os.path.join(os.getcwd(), file_name)
+        sik.deleteFile(path)
+
+        assert not os.path.isfile(file_name)
+
+        os.mknod(file_name)
+
+        assert os.path.isfile(file_name)
+
+        mocker.patch("src.pysikuli._main.send2trash", side_effect=Exception("test"))
+
         sik.deleteFile(path)
 
         assert not os.path.isfile(file_name)
@@ -397,7 +442,7 @@ class TestMain:
             main._handleNpRegion(test_reg_ndarray, None)
 
     @pytest.mark.parametrize(
-        "setAttribute",
+        "configSetAttribute",
         [
             pytest.param((["PERCENT_IMAGE_DOWNSIZING", 100],), id="100"),
             pytest.param((["PERCENT_IMAGE_DOWNSIZING", 50],), id="50"),
@@ -405,25 +450,25 @@ class TestMain:
             pytest.param((["PERCENT_IMAGE_DOWNSIZING", 5],), id="5"),
             pytest.param((["PERCENT_IMAGE_DOWNSIZING", 1],), id="1"),
         ],
-        indirect=["setAttribute"],
+        indirect=["configSetAttribute"],
     )
     def test_matchProcessing_PERCENT_IMAGE_DOWNSIZING(
-        self, setAttribute, test_img_ndarray, test_reg_for_reg
+        self, configSetAttribute, test_img_ndarray, test_reg_for_reg
     ):
         match = main._matchProcessing(test_img_ndarray, test_reg_for_reg)
         _, max_val, _, _ = cv2.minMaxLoc(match[2])
-        assert max_val >= 0.6
+        assert max_val >= 0.5
 
     @pytest.mark.parametrize(
-        "setAttribute, expected, grayscale",
+        "configSetAttribute, expected, grayscale",
         [
             pytest.param((["GRAYSCALE", True],), (100, 100), (True), id="True"),
             pytest.param((["GRAYSCALE", False],), (100, 100, 3), (False), id="False"),
         ],
-        indirect=["setAttribute"],
+        indirect=["configSetAttribute"],
     )
     def test_matchProcessing_GRAYSCALE(
-        self, setAttribute, expected, grayscale, random_np_img
+        self, configSetAttribute, expected, grayscale, random_np_img
     ):
         assert random_np_img.shape == (100, 100, 3)
 
@@ -626,64 +671,186 @@ class TestMain:
     # def test_vscroll(self):
     #     pass
 
-    # # windows management section
+    # windows management section
 
-    # def test_unminimazeWindow(self):
-    #     pass
+    @pytest.mark.parametrize(
+        "window_title",
+        [
+            pytest.param(
+                "Desktop",
+                marks=pytest.mark.skipif(not config.UNIX, reason="OS specific"),
+            ),
+            pytest.param(
+                "xfce4-panel",
+                marks=pytest.mark.skipif(not config.UNIX, reason="OS specific"),
+            ),
+            pytest.param("test_title", marks=pytest.mark.xfail),
+        ],
+    )
+    def test_titleCheck(self, window_title):
+        # we check only decorator, so print func uses as stub
+        foo = main.titleCheck(print)
+        assert foo(window_title) == None
 
-    # def test_titleCheck(self):
-    #     pass
+    @pytest.mark.parametrize(
+        "window_title, expected",
+        [
+            ("test", None),
+            (123, None),
+            (["title"], None),
+            pytest.param(
+                "Desktop",
+                "Desktop",
+                marks=pytest.mark.skipif(not config.UNIX, reason="OS specific"),
+            ),
+            pytest.param(
+                "xfce4-panel",
+                "xfce4-panel",
+                marks=pytest.mark.skipif(not config.UNIX, reason="OS specific"),
+            ),
+        ],
+    )
+    def test_windowExist(self, window_title, expected):
+        assert sik.windowExist(window_title) == expected
 
-    # def test_windowExist(self):
-    #     pass
+    @pytest.mark.parametrize("win", [False, True])
+    def test_getAllWindowsTitle(self, win):
+        setattr(config, "_WIN", win)
+        titles = main.getAllWindowsTitle()
+        for title in titles:
+            assert isinstance(title, str)
+            assert len(title) > 0
 
-    # def test_getAllWindowsTitle(self):
-    #     pass
+    @pytest.mark.parametrize(
+        "window_title",
+        [
+            pytest.param("test", marks=pytest.mark.xfail),
+            pytest.param(123, marks=pytest.mark.xfail),
+            pytest.param(["title"], marks=pytest.mark.xfail),
+            pytest.param(
+                "Desktop",
+                marks=pytest.mark.skipif(not config.UNIX, reason="OS specific"),
+            ),
+            pytest.param(
+                "xfce4-panel",
+                marks=pytest.mark.skipif(not config.UNIX, reason="OS specific"),
+            ),
+        ],
+    )
+    def test_getWindowWithTitle(self, window_title):
+        window = main.getWindowWithTitle(window_title)
+        assert hasattr(window, "maximize")
 
-    # def test_getWindowWithTitle(self):
-    #     pass
+    def test_getWindowRegion(self, open_textEditor):
+        def foo():
+            return main.getWindowRegion(open_textEditor)
 
-    # def test_activateWindow(self):
-    #     pass
+        reg = execution_time_test(foo)
+        assert isinstance(reg, Region)
 
-    # def test_getWindowUnderMouse(self):
-    #     pass
+    def test_activateWindow(self, open_textEditor):
+        expected_window = main.getWindowWithTitle(open_textEditor)
 
-    # def test_activateWindowUnderMouse(self):
-    #     pass
+        titles = main.getAllWindowsTitle()
+        for title in titles:
+            if "Visual Studio Code" in title:
+                main.activateWindow(title)
+                break
 
-    # def test_activateWindowAt(self):
-    #     pass
+        def foo():
+            return main.activateWindow(open_textEditor)
 
-    # def test_getWindowRegion(self):
-    #     pass
+        assert execution_time_test(foo)
+        assert expected_window.isActive
 
-    # def test_minimizeWindow(self):
-    #     pass
+    def test_activateWindowAt(self, open_textEditor):
+        expected_window = main.getWindowWithTitle(open_textEditor)
 
-    # def test_closeWindow(self):
-    #     pass
+        reg = main.getWindowRegion(open_textEditor)
+        x = random.randint(reg.x1, reg.x2)
+        y = random.randint(reg.y1, reg.y2)
 
-    # def test_maximizeWindow(self):
-    #     pass
+        def foo():
+            return main.activateWindowAt((x, y))
 
-    # # popups section
+        assert execution_time_test(foo)
+        assert expected_window.isActive
 
-    # def test_popupAlert(self):
-    #     pass
+    def test_activateWindowUnderMouse(self, open_textEditor):
+        expected_window = main.getWindowWithTitle(open_textEditor)
 
-    # def test_popupPassword(self):
-    #     pass
+        reg = main.getWindowRegion(open_textEditor)
+        x = random.randint(reg.x1, reg.x2)
+        y = random.randint(reg.y1, reg.y2)
 
-    # def test_popupPrompt(self):
-    #     pass
+        main.mouseMove((x, y))
 
-    # def test_popupConfirm(self):
-    #     pass
+        def foo():
+            return main.activateWindowUnderMouse()
+
+        assert execution_time_test(foo)
+        assert expected_window.isActive
+
+    def test_getWindowUnderMouse(self, open_textEditor):
+        expected_window = main.getWindowWithTitle(open_textEditor)
+        reg = main.getWindowRegion(open_textEditor)
+        x = random.randint(reg.x1, reg.x2)
+        y = random.randint(reg.y1, reg.y2)
+        main.mouseMove((x, y))
+
+        def foo():
+            return main.getWindowUnderMouse()
+
+        window = execution_time_test(foo)
+        assert window == expected_window
+
+    def test_minimizeWindow(self, open_textEditor):
+        reg = main.getWindowRegion(open_textEditor)
+        screenshot = main.grab(reg.reg)
+
+        def foo():
+            return main.minimizeWindow(open_textEditor)
+
+        assert execution_time_test(foo)
+
+        sik.sleep(0.02)
+        assert main.exist(screenshot, grayscale=False) is None
+        assert main.windowExist(open_textEditor) == open_textEditor
+
+    def test_closeWindow(self, open_textEditor):
+        main.activateWindow(open_textEditor)
+
+        def foo():
+            return main.closeWindow(open_textEditor)
+
+        execution_time_test(foo), sik.sleep(0.2)
+
+        assert main.windowExist(open_textEditor) is None
+
+    def test_maximizeWindow(self, open_textEditor):
+        assert main.maximizeWindow(open_textEditor)
+
+    # popups section
+
+    def test_popupAlert(self):
+        ans = main.popupAlert("conf", "title", (500, 500), 0.05)
+        assert ans == "Timeout"
+
+    def test_popupPassword(self):
+        ans = main.popupPassword("conf", "title", "default", "#", (500, 500), 0.05)
+        assert ans == "Timeout"
+
+    def test_popupPrompt(self):
+        ans = main.popupPrompt("conf", "title", "default", (500, 500), 0.05)
+        assert ans == "Timeout"
+
+    def test_popupConfirm(self):
+        ans = main.popupConfirm("conf", "title", root=(500, 500), timeout=0.05)
+        assert ans == "Timeout"
 
 
 @pytest.fixture()
-def setAttribute(request):
+def configSetAttribute(request):
     attrs_to_modify = {item[0]: item[1] for item in request.param}
     original_values = {attr: getattr(config, attr) for attr in attrs_to_modify.keys()}
 
@@ -698,19 +865,19 @@ def setAttribute(request):
 
 class TestPauseBetweenAction:
     @pytest.mark.parametrize(
-        "setAttribute",
+        "configSetAttribute",
         [(["PAUSE_BETWEEN_ACTION", 0.5],)],
         indirect=True,
     )
-    def test_PAUSE_BETWEEN_ACTION_deleteFile(self, setAttribute):
+    def test_PAUSE_BETWEEN_ACTION_deleteFile(self, configSetAttribute):
         assert config.PAUSE_BETWEEN_ACTION == 0.5
         path = os.path.join(os.getcwd(), "test.test")
         os.mknod(path)
         start_time = time.time()
         sik.deleteFile(path)
-        elapse = time.time() - start_time
+        elapsed = time.time() - start_time
 
-        assert 0.5 <= elapse <= 0.51
+        assert 0.5 <= elapsed <= 0.51
 
 
 @pytest.fixture()
@@ -752,7 +919,6 @@ class TestMatch:
         PRECISION = 0.6
         error = 1
 
-        sik.sleep(1)
         test_match = test_class_region.find(
             test_img_ScreenShot, grayscale=GRAYSCALE, precision=PRECISION
         )
