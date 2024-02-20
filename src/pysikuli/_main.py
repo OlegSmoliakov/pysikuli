@@ -1414,7 +1414,11 @@ def dragDrop(
 
 
 def titleCheck(wrappedFunction):
-    """Decorator to window title searching"""
+    """Decorator to window title searching
+
+    Raises:
+        NameError: raises if `windowExist` couldn't find the entered window_name and print all available windows titles
+    """
 
     @functools.wraps(wrappedFunction)
     def titleCheckWrapper(*args, **kwargs):
@@ -1432,6 +1436,15 @@ def titleCheck(wrappedFunction):
 
 
 def windowExist(window_title: str):
+    """check if entered window exists
+
+    Args:
+        window_title (str): full window name, e.g. "Mozilla Firefox".
+        To get all available titles, use `pysikuli.getAllWindowsTitle()`
+
+    Returns:
+        str | None : full window title
+    """
     if not isinstance(window_title, str):
         logging.debug(f"window title isn't string: {window_title}")
         return None
@@ -1448,8 +1461,14 @@ def windowExist(window_title: str):
 
 
 def getAllWindowsTitle():
+    """Get the list of titles of all visible windows
+
+    Returns
+    -------
+        list[str]: list of titles as strings
+    """
     titles = pwc.getAllTitles()
-    if config.WIN:
+    if not config.UNIX:  # config.WIN
         titles = [title for title in titles if len(str(title)) >= 1]
     titles = list(set(titles))
     titles.sort()
@@ -1458,16 +1477,33 @@ def getAllWindowsTitle():
 
 @titleCheck
 def getWindowWithTitle(window_title: str):
+    """Get the window objects whose title match the given string
+
+    Args
+    ----
+        window_title (str): full window name, e.g. "Mozilla Firefox".
+        To get all available titles, use `pysikuli.getAllWindowsTitle()`
+
+    Returns
+    -------
+        Window object | None
+    """
     return pwc.getWindowsWithTitle(window_title)[0]
 
 
 @failSafeCheck
 @titleCheck
 def activateWindow(window_title: str):
-    """focus window with name of application
+    """Activate entered window and make it the foreground (focused) window
 
-    Args:
-        window_title (str): can be used Firefox, Chrome, Finder and others
+    Args
+    ----
+        window_title (str): full window name, e.g. "Mozilla Firefox".
+        To get all available titles, use `pysikuli.getAllWindowsTitle()`
+
+    Returns
+    -------
+        bool: "True" if window activated
     """
 
     win = pwc.getWindowsWithTitle(window_title)
@@ -1475,34 +1511,55 @@ def activateWindow(window_title: str):
 
 
 def getWindowUnderMouse():
+    """Get the Window object at the top of the stack under mouse position
+
+    Returns
+    -------
+        Window object | None
+    """
     return pwc.getTopWindowAt(*mouse.position)
 
 
 @failSafeCheck
 def activateWindowUnderMouse():
+    """Activate the top window under mouse position
+
+    Returns
+    -------
+        bool : "True" if window is activated
+    """
     return pwc.getTopWindowAt(*mouse.position).activate(
         config.WINDOW_WAITING_CONFIRMATION
     )
 
 
 @failSafeCheck
-def activateWindowAt(location: tuple):
+def activateWindowAt(location: tuple[int, int]):
+    """Activate the top window under entered location(x, y)
+
+    Args
+    ----
+        location (tuple[int, int]): tuple with int coordinates (x, y)
+
+    Returns
+    -------
+        bool : "True" if window is activated
+    """
     return pwc.getTopWindowAt(*location).activate(config.WINDOW_WAITING_CONFIRMATION)
 
 
 @titleCheck
 def getWindowRegion(window_title: str):
-    """get the region of a window by it's name
-
+    """grab the window region window by it's name
 
     Args
     ----
-        window_title (str): full window name, e.g. 'Google — Mozilla Firefox'.
+        window_title (str): full window name, e.g. "Mozilla Firefox".
         To get all available titles, use `pysikuli.getAllWindowsTitle()`
 
     Returns
     -------
-        Region : returns an object of class `Region`, if the window is within the screen boundaries
+        Region : an object of class `Region`, if the window is within the screen boundaries and exists
     """
     # NOTE: got these values on my laptop, may be different
     x1_offset = 8
@@ -1518,14 +1575,6 @@ def getWindowRegion(window_title: str):
     )
 
 
-@failSafeCheck
-@titleCheck
-def minimizeWindow(window_title: str):
-    return pwc.getWindowsWithTitle(window_title)[0].minimize(
-        config.WINDOW_WAITING_CONFIRMATION
-    )
-
-
 @titleCheck
 def closeWindow(window_title: str):
     """Closes this window. This is identical to clicking the X button on the window.
@@ -1535,23 +1584,54 @@ def closeWindow(window_title: str):
 
     Args
     ----
-        window_title (str): close title
+        window_title (str): full window name, e.g. "Mozilla Firefox".
+        To get all available titles, use `pysikuli.getAllWindowsTitle()`
 
     Returns
     -------
-        bool: return 'True' if window is closed
+        bool: "True" if window is closed
     """
     return pwc.getWindowsWithTitle(window_title)[0].close()
 
 
 @titleCheck
 def maximizeWindow(window_title: str):
+    """Maximizes entered window
+
+    Args
+    ----
+        window_title (str): full window name, e.g. "Mozilla Firefox".
+        To get all available titles, use `pysikuli.getAllWindowsTitle()`
+
+    Returns
+    -------
+        bool: "True" if window is maximized
+    """
     window = pwc.getWindowsWithTitle(window_title)[0]
     return window.maximize(config.WINDOW_WAITING_CONFIRMATION)
 
 
+@failSafeCheck
+@titleCheck
+def minimizeWindow(window_title: str):
+    """Minimizes entered window
+
+    Args
+    ----
+        window_title (str): full window name, e.g. "Mozilla Firefox".
+        To get all available titles, use `pysikuli.getAllWindowsTitle()`
+
+    Returns
+    -------
+        bool : "True" if window minimized
+    """
+    return pwc.getWindowsWithTitle(window_title)[0].minimize(
+        config.WINDOW_WAITING_CONFIRMATION
+    )
+
+
 def _rootTimeoutNorm(root: tuple[int, int], timeout: float):
-    """Applied rootWindowPosition and return timeout in miliseconds
+    """Applied rootWindowPosition and return `timeout` in miliseconds
 
     Args
     ----
@@ -1583,7 +1663,7 @@ def popupAlert(
     ----
         text (str, optional): message above input text.
         title (str, optional): message box title.
-        root (tuple[int, int], optional): left top corner location. Defaults gets from config.ROOT_WINDOW_POSITION.
+        root (tuple[int, int], optional): left top corner location. Defaults gets from `config.ROOT_WINDOW_POSITION`.
         timeout (float, optional): time in seconds after which message box will be closed.
 
     Returns
@@ -1602,7 +1682,7 @@ def popupPassword(
     root: tuple[int, int] = None,
     timeout: float = None,
 ):
-    """Displays a message box with text input, and OK & Cancel buttons. Typed characters appear as \*.
+    """Displays a message box with text input, and OK & Cancel buttons. Typed characters appear as \* by default.
 
     Args
     ----
@@ -1610,11 +1690,12 @@ def popupPassword(
         title (str, optional): message box title.
         default (str, optional): default value for input text.
         mask (str, optional): mask symbol for entered text.
-        root (tuple[int, int], optional): left top corner location. Defaults gets from config.ROOT_WINDOW_POSITION.
+        root (tuple[int, int], optional): left top corner location. Defaults gets from `config.ROOT_WINDOW_POSITION`.
         timeout (float, optional): time in seconds after which message box will be closed.
+
     Returns
     -------
-        str | None : the entered text, None if Cancel was clicked, or `Timeout` if time has elapsed.
+        str | None : the entered text, None if Cancel was clicked, or "Timeout" if time has elapsed.
     """
     timeout = _rootTimeoutNorm(root, timeout)
     return pmb.password(text, title, default, mask, timeout=timeout)
@@ -1634,7 +1715,7 @@ def popupPrompt(
         text (str, optional): message above input text.
         title (str, optional): message box title.
         default (str, optional): default value for input text.
-        root (tuple[int, int], optional): left top corner location. Defaults gets from config.ROOT_WINDOW_POSITION.
+        root (tuple[int, int], optional): left top corner location. Defaults gets from `config.ROOT_WINDOW_POSITION`.
         timeout (float, optional): time in seconds after which message box will be closed.
 
     Returns
@@ -1660,7 +1741,7 @@ def popupConfirm(
         text (str, optional): message above buttons.
         title (str, optional): message box title.
         buttons (tuple, optional): tuple of strings, each string represent a button.
-        root (tuple[int, int], optional): left top corner location. Defaults gets from config.ROOT_WINDOW_POSITION.
+        root (tuple[int, int], optional): left top corner location. Defaults gets from `config.ROOT_WINDOW_POSITION`.
         timeout (float, optional): time in seconds after which message box will be closed.
 
     Returns
@@ -1672,7 +1753,13 @@ def popupConfirm(
 
 
 @failSafeCheck
-def deleteFile(file_path):
+def deleteFile(file_path: os.PathLike):
+    """func first tries to move the file to the bin, otherwise uses os.remove for permanently deletion
+
+    Args
+    ----
+        file_path (PathLike): full path to the file
+    """
     logging.debug(f"deleting {file_path}")
     try:
         send2trash(file_path)

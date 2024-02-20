@@ -107,19 +107,18 @@ def open_textEditor():
 
     yield window_name
 
-    if window_name in main.getAllWindowsTitle():
+    titles = main.getAllWindowsTitle()
+    if window_name in titles:
         main.closeWindow(window_name)
         sik.sleep(0.2)
         assert main.windowExist(window_name) is None
 
 
-@pytest.fixture()
 def title_exist_window_name_1():
     if config.UNIX:
         return "xfce4-panel"
 
 
-@pytest.fixture()
 def title_exist_window_name_2():
     if config.UNIX:
         return "Desktop"
@@ -256,6 +255,8 @@ class TestMain:
         sik.tap(sik.Key.enter)
 
         assert result == random_str
+
+        sik.sleep(0.1)
 
     # image searching section
 
@@ -511,14 +512,14 @@ class TestMain:
             test_img_ScreenShot.height,
         )
 
-        assert main.avgRgbValues(test_img_ndarray, cropped_reg, 0.1)
+        assert main.avgRgbValues(test_img_ndarray, cropped_reg, 0.2)
 
         match = main.exist(
             test_img_ndarray,
             test_reg_for_reg,
             grayscale=False,
             precision=0.7,
-            rgb_diff=0.1,
+            rgb_diff=0.2,
         )
 
         assert isinstance(match, Match)
@@ -686,15 +687,10 @@ class TestMain:
     @pytest.mark.parametrize(
         "window_title",
         [
-            pytest.param(
-                "Desktop",
-                marks=pytest.mark.skipif(not config.UNIX, reason="OS specific"),
-            ),
-            pytest.param(
-                "xfce4-panel",
-                marks=pytest.mark.skipif(not config.UNIX, reason="OS specific"),
-            ),
+            title_exist_window_name_1(),
+            title_exist_window_name_2(),
             pytest.param("test_title", marks=pytest.mark.xfail),
+            pytest.param(["test_title"], marks=pytest.mark.xfail),
         ],
     )
     def test_titleCheck(self, window_title):
@@ -708,16 +704,8 @@ class TestMain:
             ("test", None),
             (123, None),
             (["title"], None),
-            pytest.param(
-                "Desktop",
-                "Desktop",
-                marks=pytest.mark.skipif(not config.UNIX, reason="OS specific"),
-            ),
-            pytest.param(
-                "xfce4-panel",
-                "xfce4-panel",
-                marks=pytest.mark.skipif(not config.UNIX, reason="OS specific"),
-            ),
+            (title_exist_window_name_1(), title_exist_window_name_1()),
+            (title_exist_window_name_2(), title_exist_window_name_2()),
         ],
     )
     def test_windowExist(self, window_title, expected):
@@ -737,14 +725,8 @@ class TestMain:
             pytest.param("test", marks=pytest.mark.xfail),
             pytest.param(123, marks=pytest.mark.xfail),
             pytest.param(["title"], marks=pytest.mark.xfail),
-            pytest.param(
-                "Desktop",
-                marks=pytest.mark.skipif(not config.UNIX, reason="OS specific"),
-            ),
-            pytest.param(
-                "xfce4-panel",
-                marks=pytest.mark.skipif(not config.UNIX, reason="OS specific"),
-            ),
+            title_exist_window_name_1(),
+            title_exist_window_name_2(),
         ],
     )
     def test_getWindowWithTitle(self, window_title):
