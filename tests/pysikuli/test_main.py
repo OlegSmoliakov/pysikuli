@@ -673,8 +673,11 @@ class TestMain:
     # def test_dragDrop(self):
     #     pass
 
-    # def test_scroll(self):
-    #     pass
+    def test_scroll(self):
+        def foo():
+            return main.scroll(1, 1)
+
+        execution_time_test(foo, max_time=0.23)
 
     # def test_hscroll(self):
     #     pass

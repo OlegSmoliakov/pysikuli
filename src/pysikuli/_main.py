@@ -1112,10 +1112,52 @@ def mousePosition():
 
 
 @failSafeCheck
-def scroll(duration=0.1, horizontal_speed=0, vertical_speed=0):
-    for _ in range(int(duration * config.REFRESH_RATE)):
-        mouse.scroll(horizontal_speed, vertical_speed)
-        time.sleep(1 / config.REFRESH_RATE)
+def scroll(dx=0, dy=0):
+    """Sends scroll events.
+
+    Args
+    ----
+        dx (int, optional): The horizontal scroll. The units of scrolling is
+        undefined.
+        dy (int, optional): The vertical scroll. The units of scrolling is
+        undefined.
+    """
+    mouse.scroll(dx, dy)
+
+
+@failSafeCheck
+def smoothScroll(ticks=1, speed_x=0, speed_y=1):
+    """Sends scroll events depend on ticks and speed
+
+    Args:
+    -----
+        ticks (int, optional): roughly equivalent of 1 scroll tick.
+        speed_x (int, optional): horizontal scroolling speed.
+        speed_y (int, optional): vertical scrolling speed.
+    """
+    step_x, step_y = 1, 1
+
+    if speed_x > 50:
+        step_x += speed_x - 50
+        sleep_x = 0.02
+    else:
+        sleep_x = round(1 / speed_x, 2)
+
+    if speed_y > 50:
+        step_y += speed_y - 50
+        sleep_y = 0.02
+    else:
+        sleep_y = round(1 / speed_y, 2)
+
+    for _ in range(ticks):
+
+        s_time = time.time()
+        mouse.scroll(step_x, step_y)
+        exec_time = time.time() - s_time
+
+        sleep = max(sleep_y, sleep_x)
+        delay = sleep - exec_time if exec_time <= sleep else 0
+        time.sleep(delay)
 
 
 def hscroll(duration=0.1, speed=1):

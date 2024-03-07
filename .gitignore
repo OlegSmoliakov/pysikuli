@@ -159,9 +159,8 @@ cython_debug/
 #  option (not recommended) you can uncomment the following to ignore the entire idea folder.
 #.idea/
 
-macbook_splitcam_manycam_obs.py
 draft.py
+draft_2.py
+draft_3.py
 /pics
-build_test
-launch.json
 .vscode
