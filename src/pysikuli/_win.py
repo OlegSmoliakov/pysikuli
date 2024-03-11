@@ -5,6 +5,8 @@ try:
 except:
     raise ImportError("Please install win32gui")
 
+import pymonctl as pmc
+
 from pynput.keyboard import Key
 
 
@@ -92,3 +94,11 @@ class ActiveWindow:
 def _activateWindow(app_name: str):
     ActiveWindow().set_foreground(app_name)
     logging.debug("{0} activated".format(app_name))
+
+
+def _getRefreshRate():
+    return int(pmc.getPrimary().frequency)
+
+
+def _getMonitorRegion():
+    return tuple(int(x) for x in pmc.getPrimary().box)

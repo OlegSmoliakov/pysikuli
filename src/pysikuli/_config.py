@@ -65,16 +65,27 @@ class Config:
     # TODO: Sleep value should vary with the platform. http://stackoverflow.com/q/1133857
 
     def __init__(self):
-        self.MONITOR_REGION = pmc.getPrimary().box
+        # platform selection
+        self._OSX, self._WIN, self._UNIX = getOS()
+        self._platformModule = getPlatformModule(self._OSX, self._WIN, self._UNIX)
+        self.FAILSAFE_HOTKEY = getDefaultFailsafeHotkey(self.OSX)
+
+        self.MONITOR_REGION = self._platformModule._getMonitorRegion()
         self.MONITOR_RESOLUTION = (
             self.MONITOR_REGION[2],
             self.MONITOR_REGION[3],
         )
 
-        # platform selection
-        self._OSX, self._WIN, self._UNIX = getOS()
-        self._platformModule = getPlatformModule(self._OSX, self._WIN, self._UNIX)
-        self.FAILSAFE_HOTKEY = getDefaultFailsafeHotkey(self.OSX)
+        self.REFRESH_RATE = self._platformModule._getRefreshRate()
+        # HACK in case getPrimary returns something strange.
+        if self.REFRESH_RATE <= 0:
+            self.REFRESH_RATE = 60
+
+        DEBUG_SETTINGS = {
+            "PAUSE_BETWEEN_ACTION": 0.5,
+            "TIME_STEP": round(1 / self.REFRESH_RATE, 5),
+            "MOUSE_SPEED": 1,
+        }
 
         # 400 and 100 is min size of pymsgbox window
         root_x = int(self.MONITOR_RESOLUTION[0] / 2 - 400 / 2)
@@ -133,11 +144,6 @@ class Config:
     MIN_PRECISION = 0.8
     # The time limit for search functions. If it is exceeded, None is returned
     MAX_SEARCH_TIME = 2.0
-
-    REFRESH_RATE = int(pmc.getPrimary().frequency)
-    # in case getPrimary returns something strange.
-    if REFRESH_RATE <= 0:
-        REFRESH_RATE = 60
 
     # Each TIME_STEP in seconds a image searching takes a new screenshot for next analysis
     # Each TIME_STEP in seconds tap and write takes after each key press
@@ -215,12 +221,6 @@ class Config:
         os.path.dirname(__file__), "tools_data/_finish.mp3"
     )
     SOUND_BLEEP_PATH = os.path.join(os.path.dirname(__file__), "tools_data/_bleep.mp3")
-
-    DEBUG_SETTINGS = {
-        "PAUSE_BETWEEN_ACTION": 0.5,
-        "TIME_STEP": round(1 / REFRESH_RATE, 5),
-        "MOUSE_SPEED": 1,
-    }
 
     _DEFAULT_SETTINGS = {
         "PAUSE_BETWEEN_ACTION": 0,

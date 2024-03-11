@@ -2,7 +2,8 @@ import re
 import subprocess
 import logging
 
-from AppKit import NSScreen
+import Quartz.CoreGraphics as CG
+
 from pynput.keyboard import Key
 
 
@@ -64,13 +65,24 @@ class MacKey:
 
 
 def _getRefreshRate():
-    maxRefreshRate = 0
-    for each in NSScreen.screens():
-        if each.maximumFramesPerSecond() > maxRefreshRate:
-            maxRefreshRate = each.maximumFramesPerSecond()
-            # print(f"{each.localizedName()}: {each.maximumFramesPerSecond()}Hz")
-    else:
-        return maxRefreshRate
+    main_display_id = CG.CGMainDisplayID()
+    mode = CG.CGDisplayCopyDisplayMode(main_display_id)
+    refresh_rate = CG.CGDisplayModeGetRefreshRate(mode)
+
+    return int(refresh_rate)
+
+
+def _getMonitorRegion():
+    main_display_id = CG.CGMainDisplayID()
+    display_bounds = CG.CGDisplayBounds(main_display_id)
+    region = (
+        int(display_bounds.origin.x),
+        int(display_bounds.origin.y),
+        int(display_bounds.size.width),
+        int(display_bounds.size.height),
+    )
+
+    return region
 
 
 def _activateWindow(app_name: str):

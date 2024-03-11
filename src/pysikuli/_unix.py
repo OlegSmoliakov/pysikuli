@@ -1,5 +1,7 @@
 import re
 
+import pymonctl as pmc
+
 from subprocess import run
 from pynput.keyboard import Key
 
@@ -100,13 +102,9 @@ def _apt_check(required_pkgs_name: tuple[str] | list[str]):
         _apt_install(missing_pkgs)
 
 
-# NOTE depricated, need x11-xserver-utils to run
 def _getRefreshRate():
-    output = run(
-        ["xrandr"],
-        capture_output=True,
-        encoding="utf-8",
-    ).stdout
-    current_refrash_rate = re.findall(r".{6}\*", output)[0]
-    current_refrash_rate = re.sub(r"\..+", "", current_refrash_rate)
-    return int(current_refrash_rate)
+    return int(pmc.getPrimary().frequency)
+
+
+def _getMonitorRegion():
+    return tuple(int(x) for x in pmc.getPrimary().box)
