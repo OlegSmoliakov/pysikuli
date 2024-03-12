@@ -2,8 +2,10 @@ import re
 import subprocess
 import logging
 
-import Quartz.CoreGraphics as CG
+import Quartz
 
+from Quartz import CoreGraphics as CG
+from AppKit import NSWorkspace, NSApplicationActivateIgnoringOtherApps
 from pynput.keyboard import Key
 
 
@@ -64,7 +66,7 @@ class MacKey:
     return_r = Key.enter
 
 
-def _getRefreshRate():
+def getRefreshRate():
     main_display_id = CG.CGMainDisplayID()
     mode = CG.CGDisplayCopyDisplayMode(main_display_id)
     refresh_rate = CG.CGDisplayModeGetRefreshRate(mode)
@@ -72,7 +74,7 @@ def _getRefreshRate():
     return int(refresh_rate)
 
 
-def _getMonitorRegion():
+def getMonitorRegion():
     main_display_id = CG.CGMainDisplayID()
     display_bounds = CG.CGDisplayBounds(main_display_id)
     region = (
@@ -85,17 +87,84 @@ def _getMonitorRegion():
     return region
 
 
-def _activateWindow(app_name: str):
-    # TODO: activate only if the application has not been activated before
-    cmd = f"osascript -e 'activate application \"{app_name}\"'"
-    ans = subprocess.call(cmd, shell=True)
-    if ans:
-        logging.warning(f"activateWindow(): {app_name} failed")
-        return 1
-    logging.debug(f"activateWindow(): {app_name} activated")
-    return 0
+def activateWindow(window_title: str):
+    # store info about all apps
+    element = Quartz.CGWindowListCopyWindowInfo(
+        Quartz.kCGWindowListOptionOnScreenOnly, Quartz.kCGNullWindowID
+    )
+    element = [x for x in element if x[Quartz.kCGWindowLayer] == 0]
+
+    for window_info in element:
+        if window_info[Quartz.kCGWindowName] == window_title:
+            owner_pid = window_info[Quartz.kCGWindowOwnerPID]
+
+    apps = NSWorkspace.sharedWorkspace().runningApplications()
+
+    for app in apps:
+        if app.processIdentifier() == owner_pid:
+            window = app
+
+    window.activateWithOptions_(NSApplicationActivateIgnoringOtherApps)
+    # NOTE can be used to hide, terminate
 
 
+def getAllAppsWindowsTitles():
+    """Get the list of titles of all visible windows
+
+    Returns
+    -------
+        list[str]: list of titles as strings
+    """
+
+    apps = Quartz.CGWindowListCopyWindowInfo(
+        Quartz.kCGWindowListOptionOnScreenOnly, Quartz.kCGNullWindowID
+    )
+    # sort by 0 layer, to avoid system applications and applications that are not on current screen
+    apps = [app for app in apps if app[Quartz.kCGWindowLayer] == 0]
+
+    apps_list = {}
+    for app in apps:
+        window_name = app[Quartz.kCGWindowName]
+        app_name = app[Quartz.kCGWindowOwnerName]
+
+        # skip icons
+        if app_name == "Item-0":
+            continue
+
+        if app_name in apps_list:
+            apps_list[app_name].append(window_name)
+        else:
+            apps_list[app_name] = [window_name]
+
+    return apps_list
+
+
+def getAllTitles():
+    """Retrieves a list of all window titles from all running applications on current screen.
+
+    Returns
+    --------
+        list: A list of unique window titles.
+    """
+    titles = []
+    for value in getAllAppsWindowsTitles().values():
+        titles.extend(value)
+    titles = list(set(titles))
+    return titles
+
+
+def getAllAppsNames():
+    """Get the list of names of all running applications on current screen
+
+    Returns
+    --------
+        list[str]: list of names as strings
+    """
+
+    return list(getAllAppsWindowsTitles().keys())
+
+
+# depricated
 def _getWindowRegion(app_name: str):
     APPLESCRIPT = f"""
     tell application "{app_name}" to get the bounds of window 1
@@ -112,6 +181,7 @@ def _getWindowRegion(app_name: str):
     return region
 
 
+# depricated
 def _minimizeWindow(app_name: str):
     APPLESCRIPT = f"""
     tell application "{app_name}" 
@@ -121,6 +191,7 @@ def _minimizeWindow(app_name: str):
     print(subprocess.run(["osascript", "-e", APPLESCRIPT], capture_output=True))
 
 
+# depricated
 def _unminimizeWindow(app_name: str):
     # TODO: doesn't work
     APPLESCRIPT = f"""

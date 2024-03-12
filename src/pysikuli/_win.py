@@ -6,6 +6,7 @@ except:
     raise ImportError("Please install win32gui")
 
 import pymonctl as pmc
+import pywinctl as pwc
 
 from pynput.keyboard import Key
 
@@ -96,9 +97,23 @@ def _activateWindow(app_name: str):
     logging.debug("{0} activated".format(app_name))
 
 
-def _getRefreshRate():
+def getRefreshRate():
     return int(pmc.getPrimary().frequency)
 
 
-def _getMonitorRegion():
+def getMonitorRegion():
     return tuple(int(x) for x in pmc.getPrimary().box)
+
+
+def getAllTitles():
+    """Get the list of titles of all visible windows
+
+    Returns
+    -------
+        list[str]: list of titles as strings
+    """
+    titles = pwc.getAllTitles()
+    titles = [title for title in titles if len(str(title)) >= 1]
+    titles = list(set(titles))
+    titles.sort()
+    return titles

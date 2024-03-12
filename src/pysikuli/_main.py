@@ -1468,7 +1468,7 @@ def titleCheck(wrappedFunction):
         if window_title:
             return wrappedFunction(window_title, **kwargs)
         else:
-            titles = getAllWindowsTitle()
+            titles = config._platformModule.getAllTitles()
             text = "\n"
             for title in titles:
                 text += f"- {title}\n"
@@ -1491,7 +1491,7 @@ def windowExist(window_title: str):
         logging.debug(f"window title isn't string: {window_title}")
         return None
     window_title = window_title.lower()
-    titles = getAllWindowsTitle()
+    titles = config._platformModule.getAllTitles()
     titles_lower = [title.lower() for title in titles]
     for i in range(len(titles_lower)):
         if window_title == titles_lower[i]:
@@ -1500,21 +1500,6 @@ def windowExist(window_title: str):
     if "title" in locals():
         return title
     return None
-
-
-def getAllWindowsTitle():
-    """Get the list of titles of all visible windows
-
-    Returns
-    -------
-        list[str]: list of titles as strings
-    """
-    titles = pwc.getAllTitles()
-    if not config.UNIX:  # config.WIN
-        titles = [title for title in titles if len(str(title)) >= 1]
-    titles = list(set(titles))
-    titles.sort()
-    return titles
 
 
 @titleCheck
@@ -1547,6 +1532,8 @@ def activateWindow(window_title: str):
     -------
         bool: "True" if window activated
     """
+    if config.OSX:
+        return config._platformModule.activateWindow(window_title)
 
     win = pwc.getWindowsWithTitle(window_title)
     return win[0].activate(config.WINDOW_WAITING_CONFIRMATION)
@@ -1604,9 +1591,11 @@ def getWindowRegion(window_title: str):
         Region : an object of class `Region`, if the window is within the screen boundaries and exists
     """
     # NOTE: got these values on my laptop, may be different
-    x1_offset = 8
-    x2_offset = -8
-    y2_offset = -8
+    x1_offset, x2_offset, y2_offset = 0, 0, 0
+    if config.UNIX:
+        x1_offset = 8
+        x2_offset = -8
+        y2_offset = -8
 
     windows = pwc.getWindowsWithTitle(window_title)
     return Region(

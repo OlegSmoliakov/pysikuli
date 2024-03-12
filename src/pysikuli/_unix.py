@@ -1,6 +1,5 @@
-import re
-
 import pymonctl as pmc
+import pywinctl as pwc
 
 from subprocess import run
 from pynput.keyboard import Key
@@ -102,9 +101,22 @@ def _apt_check(required_pkgs_name: tuple[str] | list[str]):
         _apt_install(missing_pkgs)
 
 
-def _getRefreshRate():
+def getRefreshRate():
     return int(pmc.getPrimary().frequency)
 
 
-def _getMonitorRegion():
+def getMonitorRegion():
     return tuple(int(x) for x in pmc.getPrimary().box)
+
+
+def getAllTitles():
+    """Get the list of titles of all visible windows
+
+    Returns
+    -------
+        list[str]: list of titles as strings
+    """
+    titles = pwc.getAllTitles()
+    titles = list(set(titles))
+    titles.sort()
+    return titles

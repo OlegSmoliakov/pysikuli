@@ -70,13 +70,13 @@ class Config:
         self._platformModule = getPlatformModule(self._OSX, self._WIN, self._UNIX)
         self.FAILSAFE_HOTKEY = getDefaultFailsafeHotkey(self.OSX)
 
-        self.MONITOR_REGION = self._platformModule._getMonitorRegion()
+        self.MONITOR_REGION = self._platformModule.getMonitorRegion()
         self.MONITOR_RESOLUTION = (
             self.MONITOR_REGION[2],
             self.MONITOR_REGION[3],
         )
 
-        self.REFRESH_RATE = self._platformModule._getRefreshRate()
+        self.REFRESH_RATE = self._platformModule.getRefreshRate()
         # HACK in case getPrimary returns something strange.
         if self.REFRESH_RATE <= 0:
             self.REFRESH_RATE = 60

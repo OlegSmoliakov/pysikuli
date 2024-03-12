@@ -87,12 +87,17 @@ from ._main import (
     getWindowRegion,
     getWindowWithTitle,
     getWindowUnderMouse,
-    getAllWindowsTitle,
     minimizeWindow,
     maximizeWindow,
     closeWindow,
     windowExist,
 )
+
+
+# HACK
+def getAllTitles():
+    """Retrieves a list of all window titles from all running applications on current screen."""
+    return config._platformModule.getAllTitles()
 
 
 # import pymsgbox functions
