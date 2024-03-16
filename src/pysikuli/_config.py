@@ -81,7 +81,7 @@ class Config:
         if self.REFRESH_RATE <= 0:
             self.REFRESH_RATE = 60
 
-        DEBUG_SETTINGS = {
+        self.DEBUG_SETTINGS = {
             "PAUSE_BETWEEN_ACTION": 0.5,
             "TIME_STEP": round(1 / self.REFRESH_RATE, 5),
             "MOUSE_SPEED": 1,
