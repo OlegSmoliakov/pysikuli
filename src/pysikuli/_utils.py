@@ -35,7 +35,6 @@ def getLocation(interval=0.5):
             playSound(config.SOUND_BLEEP_PATH)
 
         x, y = mousePosition()
-        x, y = int(x), int(y)
 
         text = f"Current XY: [{x}, {y}]  RGB: {getPixelRGB((x, y))}"
         print(text)
@@ -87,7 +86,6 @@ def _getRegion(reg_format, interval=0.5, test_interrupt_offset=0):
             playSound(config.SOUND_BLEEP_PATH)
 
         x, y = mousePosition()
-        x, y = int(x), int(y)
 
         text = "Current XY: [" + str(x) + ", " + str(y) + "]"
         print(text)
