@@ -198,7 +198,8 @@ sounddevice dependence:
     Also, pysikuli will try to install this package on its own the first time you run it
 
 #### MacOS:
-You need to enable **Accessibility** and **Screen capture** permissions to terminal or python itself.
+-You need to enable **Accessibility** and **Screen capture** permissions to terminal or python itself.
+- brew install python-tk if you want to use popup windows
 
 
 ## VS Code add-ons
