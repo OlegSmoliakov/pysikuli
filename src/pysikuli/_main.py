@@ -3,7 +3,6 @@ import logging
 import math
 import os
 import time
-from turtle import position
 
 import cv2
 import numpy as np
@@ -286,6 +285,19 @@ class Region(object):
             image=image, region=self.reg, grayscale=grayscale, precision=precision
         )
 
+    def waitStaticRegion(
+        self,
+        time_without_changes=0.5,
+        max_checking_time=-1,
+        check_interval=0.2,
+    ):
+        return waitStaticRegion(
+            region=self.reg,
+            time_without_changes=time_without_changes,
+            max_checking_time=max_checking_time,
+            check_interval=check_interval,
+        )
+
 
 class Match(Region):
     __slots__ = (
@@ -493,6 +505,49 @@ def find(
             return _match
         time.sleep(time_step)
     return None
+
+
+def waitStaticRegion(
+    region: Region, time_without_changes=0.5, max_checking_time=-1, check_interval=0.2
+):
+    """
+    Waits for a static content in region by continuously capturing screenshots and checking for changes.
+
+    Args:
+    ----
+        region (Region): The region to monitor for changes.
+        time_without_changes (float, optional): The time in seconds to wait without any changes before considering the region as static. Defaults to 0.5.
+        max_checking_time (float, optional): The maximum time in seconds to wait for changes. If set to -1, it will wait indefinitely. Defaults to -1.
+        check_interval (float, optional): The time interval in seconds between each check for changes. Defaults to 0.2.
+
+    Returns:
+    -------
+        bool: True if the region remains static for the specified time, False otherwise.
+    """
+
+    screenshot = grab(region.reg)
+    _start_time = start_time = time.time()
+    while time.time() - start_time < time_without_changes:
+        iteration_start = time.time()
+        new_screenshot = grab(region.reg)
+        if not np.array_equal(screenshot.pixels, new_screenshot.pixels):
+            screenshot = new_screenshot
+            start_time = time.time()
+        if max_checking_time != -1 and time.time() - _start_time > max_checking_time:
+            return False
+
+        logging.debug(
+            f"waitStaticRegion(): {round(time.time() - start_time, 2)} sec without changes"
+        )
+
+        iteration_time = time.time() - iteration_start
+        if iteration_time < check_interval:
+            time.sleep(check_interval - iteration_time)
+
+    logging.debug(
+        f"waitStaticRegion() finished: nothing has been changed for {time_without_changes} sec"
+    )
+    return True
 
 
 def _imgDownsize(img: np.ndarray, scale_percent: int):
@@ -1466,7 +1521,7 @@ def titleCheck(wrappedFunction):
     @functools.wraps(wrappedFunction)
     def titleCheckWrapper(*args, **kwargs):
         window_title = windowExist(*args)
-        if window_title:
+        if window_title is not None:
             return wrappedFunction(window_title, **kwargs)
         else:
             titles = config._platformModule.getAllTitles()
