@@ -3,6 +3,7 @@ import logging
 import math
 import os
 import time
+from turtle import position
 
 import cv2
 import numpy as np
@@ -1108,7 +1109,7 @@ def pasteFromClip():
 
 
 def mousePosition():
-    return mouse.position
+    return (int(mouse.position[0]), int(mouse.position[1]))
 
 
 @failSafeCheck
