@@ -97,11 +97,12 @@ def activateWindow(window_title: str):
     for window_info in element:
         if window_info[Quartz.kCGWindowName] == window_title:
             owner_pid = window_info[Quartz.kCGWindowOwnerPID]
+            owner_name = window_info[Quartz.kCGWindowOwnerName]
 
     apps = NSWorkspace.sharedWorkspace().runningApplications()
 
     for app in apps:
-        if app.processIdentifier() == owner_pid:
+        if app.processIdentifier() == owner_pid or app.localizedName() == owner_name:
             window = app
 
     window.activateWithOptions_(NSApplicationActivateIgnoringOtherApps)
