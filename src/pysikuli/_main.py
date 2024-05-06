@@ -778,11 +778,10 @@ def _matchProcessing(
     return match_result
 
 
-def avgRgbValues(
-    np_image, np_cropped_region, diff_percent=config.PERCENT_RGB_DIFFERENCE
-):
+def avgRgbValues(np_image, np_cropped_region):
     img_avg_RGB = np.mean(np_image, axis=(0, 1))
     reg_avg_RGB = np.mean(np_cropped_region, axis=(0, 1))
+    diffs = []
     for i in range(3):
         counting = img_avg_RGB[i] / reg_avg_RGB[i]
         if counting > 1:
@@ -790,10 +789,9 @@ def avgRgbValues(
         else:
             counting = 1 - counting
 
-        if counting * 100 > diff_percent:
-            return False
+        diffs.append(round(counting * 100, 2))
 
-    return True
+    return diffs
 
 
 def cropRegToImgShape(np_region, tuple_region, max_loc_abs, img_width, img_height):
@@ -859,7 +857,6 @@ def exist(
     elif isinstance(image, ScreenShot):
         image = repr(image)
 
-    logging.debug(f"search result: {max_val} precision: {precision} img: {image}")
     max_loc_rel = tuple(
         int(point / config.PERCENT_IMAGE_DOWNSIZING * 100) for point in max_loc
     )
@@ -868,6 +865,7 @@ def exist(
     max_loc_abs_center = _getCenterLoc(img_width, img_height, max_loc_abs)
 
     if max_val < precision:
+        logging.debug(f"search result: {max_val} precision: {precision} img: {image}")
         return None
 
     match_class = Match(
@@ -881,13 +879,24 @@ def exist(
     )
 
     if not rgb_diff:
+        logging.debug(f"search result: {max_val} precision: {precision} img: {image}")
         return match_class
     else:
         cropped_reg = cropRegToImgShape(
             region_capture, tuple_region, max_loc_abs, img_width, img_height
         )
-        if avgRgbValues(image_capture, cropped_reg, rgb_diff):
-            return match_class
+
+        for counting in avgRgbValues(image_capture, cropped_reg):
+            if counting > config.PERCENT_RGB_DIFFERENCE:
+                logging.debug(
+                    f"search result: {max_val} precision: {precision} img: {image} rgb_diff: {counting} "
+                )
+                return None
+
+        logging.debug(
+            f"search result: {max_val} precision: {precision} img: {image} rgb_diff: {counting} "
+        )
+        return match_class
 
 
 def existAny(
