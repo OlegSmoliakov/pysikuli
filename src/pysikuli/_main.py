@@ -3,6 +3,7 @@ import logging
 import math
 import os
 import time
+from typing import Sequence
 
 import cv2
 import numpy as np
@@ -508,7 +509,7 @@ def find(
 
 
 def waitStaticRegion(
-    region: Region, time_without_changes=0.5, max_checking_time=-1, check_interval=0.2
+    region, time_without_changes=0.5, max_checking_time=-1, check_interval=0.2
 ):
     """
     Waits for a static content in region by continuously capturing screenshots and checking for changes.
@@ -525,11 +526,12 @@ def waitStaticRegion(
         bool: True if the region remains static for the specified time, False otherwise.
     """
 
-    screenshot = grab(region.reg)
+    tuple_reg = _regionNormalization(region)
+    screenshot = grab(tuple_reg)
     _start_time = start_time = time.time()
     while time.time() - start_time < time_without_changes:
         iteration_start = time.time()
-        new_screenshot = grab(region.reg)
+        new_screenshot = grab(tuple_reg)
         if not np.array_equal(screenshot.pixels, new_screenshot.pixels):
             screenshot = new_screenshot
             start_time = time.time()
@@ -628,7 +630,31 @@ def _locationValidation(loc: tuple[int, int]):
         raise ValueError(f"location {loc} must contain integer value")
 
 
-def _regionNormalization(reg=None):
+def _regionNormalization(reg: ScreenShot | Region | Sequence | np.ndarray = None):
+    """
+    Normalize the input region.
+
+    Args:
+    -------
+        reg (ScreenShot | Region | Sequence | np.ndarray, optional): The input region to be normalized. Defaults to None.
+
+    Returns:
+    -------
+        The normalized region.
+
+    Raises:
+    -------
+        TypeError: If the entered region's type is incorrect.
+
+    Supported types for `reg`:
+    - ScreenShot: A screenshot region.
+    - Region: A region object.
+    - Sequence: A sequence object. (List or Tuple with 4 integers)
+    - np.ndarray: A NumPy array.
+
+    If `reg` is None, the default monitor region will be returned.
+    """
+
     if isinstance(reg, ScreenShot):
         reg = (
             reg.left,
