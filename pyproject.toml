@@ -16,7 +16,6 @@ classifiers = [ "License :: OSI Approved :: GNU General Public License v3 (GPLv3
 
 [tool.poetry.dependencies]
 python = "^3.10"
-pip = "^24.0"
 wheel = "^0.42.0"
 mss = "^9.0.1"
 opencv-python = "4.6.0.66"
@@ -28,6 +27,7 @@ gitignore-parser = "^0.1.11"
 sounddevice = "^0.4.6"
 soundfile = "^0.12.1"
 pyperclip = "^1.8.2"
+numpy = "^1.26.4"
 
 [tool.poetry.group.dev.dependencies]
 pyinstrument = "^4.6.1"
