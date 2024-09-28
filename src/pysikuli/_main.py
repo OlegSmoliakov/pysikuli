@@ -13,7 +13,7 @@ import pywinctl as pwc
 
 from mss.screenshot import ScreenShot
 from mss import mss, tools
-from PyHotKey import keyboard_manager as keyboard
+from PyHotKey import keyboard
 from pynput.mouse import Controller as mouse_manager
 from send2trash import send2trash
 
@@ -45,13 +45,9 @@ class FailSafeException(PysikuliException):
 def _mouseFailSafeCheck():
     mousePos = mousePosition()
     for region in config.FAILSAFE_REGIONS:
-        if (
-            region[0] <= mousePos[0] <= region[2]
-            and region[1] <= mousePos[1] <= region[3]
-        ):
+        if region[0] <= mousePos[0] <= region[2] and region[1] <= mousePos[1] <= region[3]:
             return (
-                "pysikuli fail-safe triggered when "
-                "moving the mouse within the fail-safe region."
+                "pysikuli fail-safe triggered when " "moving the mouse within the fail-safe region."
             )
 
 
@@ -156,9 +152,7 @@ class Region(object):
         )
         if not _match:
             if rgb_diff:
-                logging.info(
-                    f"has() couldn't find the specific pixel in the region: {image}"
-                )
+                logging.info(f"has() couldn't find the specific pixel in the region: {image}")
             else:
                 logging.debug(f"has() couldn't find the image: {image}")
             return False
@@ -282,9 +276,7 @@ class Region(object):
         grayscale: bool = None,
         precision: float = None,
     ):
-        return existAny(
-            image=image, region=self.reg, grayscale=grayscale, precision=precision
-        )
+        return existAny(image=image, region=self.reg, grayscale=grayscale, precision=precision)
 
     def waitStaticRegion(
         self,
@@ -440,9 +432,7 @@ def waitWhileExist(
     precision: float = None,
     rgb_diff: float = None,
 ):
-    max_search_time = (
-        max_search_time if max_search_time is not None else config.MAX_SEARCH_TIME
-    )
+    max_search_time = max_search_time if max_search_time is not None else config.MAX_SEARCH_TIME
     time_step = time_step if time_step is not None else config.TIME_STEP
 
     start_time = time.time()
@@ -459,9 +449,7 @@ def waitWhileExist(
             return True
         time.sleep(time_step)
 
-    logging.info(
-        f"waitWhileExist finished due to MAX_SEARCH_TIME = {config.MAX_SEARCH_TIME} limit"
-    )
+    logging.info(f"waitWhileExist finished due to MAX_SEARCH_TIME = {config.MAX_SEARCH_TIME} limit")
     return False
 
 
@@ -488,9 +476,7 @@ def find(
     Returns:
         _type_: _description_
     """
-    max_search_time = (
-        max_search_time if max_search_time is not None else config.MAX_SEARCH_TIME
-    )
+    max_search_time = max_search_time if max_search_time is not None else config.MAX_SEARCH_TIME
     time_step = time_step if time_step is not None else config.TIME_STEP
 
     start_time = time.time()
@@ -508,9 +494,7 @@ def find(
     return None
 
 
-def waitStaticRegion(
-    region, time_without_changes=0.5, max_checking_time=-1, check_interval=0.2
-):
+def waitStaticRegion(region, time_without_changes=0.5, max_checking_time=-1, check_interval=0.2):
     """
     Waits for a static content in region by continuously capturing screenshots and checking for changes.
 
@@ -593,9 +577,7 @@ def _coordinateNormalization(
             raise TimeoutError(error_text)
         return _match.center_loc
     else:
-        logging.warning(
-            f"getCoordinates: can't recognize this type of data: {loc_or_pic}"
-        )
+        logging.warning(f"getCoordinates: can't recognize this type of data: {loc_or_pic}")
         return None, None
 
 
@@ -883,9 +865,7 @@ def exist(
     elif isinstance(image, ScreenShot):
         image = repr(image)
 
-    max_loc_rel = tuple(
-        int(point / config.PERCENT_IMAGE_DOWNSIZING * 100) for point in max_loc
-    )
+    max_loc_rel = tuple(int(point / config.PERCENT_IMAGE_DOWNSIZING * 100) for point in max_loc)
     max_loc_abs = (tuple_region[0] + max_loc_rel[0], tuple_region[1] + max_loc_rel[1])
 
     max_loc_abs_center = _getCenterLoc(img_width, img_height, max_loc_abs)
@@ -1330,10 +1310,7 @@ def mouseSmoothMove(
 
         dist2NewPoint = vector_diff(mouse.position, (new_x, new_y))
 
-        if (
-            abs(dist2NewPoint[0]) > abs(delta_x) * 2
-            and abs(dist2NewPoint[1]) > abs(delta_y) * 2
-        ):
+        if abs(dist2NewPoint[0]) > abs(delta_x) * 2 and abs(dist2NewPoint[1]) > abs(delta_y) * 2:
             interruptions += 1
 
         if interruptions > steps * 0.5:
@@ -1341,10 +1318,7 @@ def mouseSmoothMove(
 
     dist2point = vector_diff(mouse.position, destination_loc)
 
-    if (
-        abs(dist2point[0]) <= abs(delta_x) * 2
-        and abs(dist2point[1]) <= abs(delta_y) * 2
-    ):
+    if abs(dist2point[0]) <= abs(delta_x) * 2 and abs(dist2point[1]) <= abs(delta_y) * 2:
         mouse.position = destination_loc
     else:
         raise PysikuliException("Mouse movement has been interrupted")
@@ -1456,9 +1430,7 @@ def click(
             precision=precision,
         )
 
-        logging.debug(
-            f"click: {x, y}, clicks: {clicks} interval: {interval} button: {button}"
-        )
+        logging.debug(f"click: {x, y}, clicks: {clicks} interval: {interval} button: {button}")
 
         mouseSmoothMove(destination_loc=(x, y))
 
@@ -1648,9 +1620,7 @@ def activateWindowUnderMouse():
     -------
         bool : "True" if window is activated
     """
-    return pwc.getTopWindowAt(*mouse.position).activate(
-        config.WINDOW_WAITING_CONFIRMATION
-    )
+    return pwc.getTopWindowAt(*mouse.position).activate(config.WINDOW_WAITING_CONFIRMATION)
 
 
 @failSafeCheck
@@ -1747,9 +1717,7 @@ def minimizeWindow(window_title: str):
     -------
         bool : "True" if window minimized
     """
-    return pwc.getWindowsWithTitle(window_title)[0].minimize(
-        config.WINDOW_WAITING_CONFIRMATION
-    )
+    return pwc.getWindowsWithTitle(window_title)[0].minimize(config.WINDOW_WAITING_CONFIRMATION)
 
 
 def _rootTimeoutNorm(root: tuple[int, int], timeout: float):
