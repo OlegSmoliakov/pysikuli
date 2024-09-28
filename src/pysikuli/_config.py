@@ -76,6 +76,9 @@ class Config:
             self.MONITOR_REGION[3],
         )
 
+        # HiDPI double the size of set resolution affects the screenshot size
+        self.HIDPI = self._platformModule.is_hidpi_enabled() if self.OSX else False
+
         self.REFRESH_RATE = self._platformModule.getRefreshRate()
         # HACK in case getPrimary returns something strange.
         if self.REFRESH_RATE <= 0:
@@ -214,12 +217,8 @@ class Config:
 
     # Constants for utils module
     SOUND_ON = True
-    SOUND_CAPTURE_PATH = os.path.join(
-        os.path.dirname(__file__), "tools_data/_capture.mp3"
-    )
-    SOUND_FINISH_PATH = os.path.join(
-        os.path.dirname(__file__), "tools_data/_finish.mp3"
-    )
+    SOUND_CAPTURE_PATH = os.path.join(os.path.dirname(__file__), "tools_data/_capture.mp3")
+    SOUND_FINISH_PATH = os.path.join(os.path.dirname(__file__), "tools_data/_finish.mp3")
     SOUND_BLEEP_PATH = os.path.join(os.path.dirname(__file__), "tools_data/_bleep.mp3")
 
     _DEFAULT_SETTINGS = {

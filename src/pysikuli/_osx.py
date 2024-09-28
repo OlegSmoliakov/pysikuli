@@ -8,6 +8,8 @@ from Quartz import CoreGraphics as CG
 from AppKit import NSWorkspace, NSApplicationActivateIgnoringOtherApps
 from pynput.keyboard import Key
 
+log = logging.getLogger(__name__)
+
 
 class MacKey:
     alt = Key.alt
@@ -170,12 +172,10 @@ def _getWindowRegion(app_name: str):
     APPLESCRIPT = f"""
     tell application "{app_name}" to get the bounds of window 1
     """
-    response = str(
-        subprocess.run(["osascript", "-e", APPLESCRIPT], capture_output=True).stdout
-    )
+    response = str(subprocess.run(["osascript", "-e", APPLESCRIPT], capture_output=True).stdout)
     if response == "b''":
         error_text = f"Couldn't find '{app_name}' window, current response: {response}"
-        logging.fatal(error_text)
+        log.critical(error_text)
         raise OSError(error_text)
     response = [int(i) for i in re.sub(r"[^0-9,]", "", response).split(",")]
     region = [response[0], response[1], response[2] - 1, response[3] - 1]
@@ -203,3 +203,21 @@ def _unminimizeWindow(app_name: str):
     tell application "System Events" to set visible of process "{app_name}" to true
     """
     print(subprocess.run(["osascript", "-e", APPLESCRIPT], capture_output=True))
+
+
+def is_hidpi_enabled() -> bool:
+    main_display_id = Quartz.CGMainDisplayID()
+    display_mode = Quartz.CGDisplayCopyDisplayMode(main_display_id)
+
+    pixel_width = Quartz.CGDisplayPixelsWide(main_display_id)
+    pixel_height = Quartz.CGDisplayPixelsHigh(main_display_id)
+
+    point_width = Quartz.CGDisplayModeGetPixelWidth(display_mode)
+    point_height = Quartz.CGDisplayModeGetPixelHeight(display_mode)
+
+    log.debug(f"pixel_width: {pixel_width}, pixel_height: {pixel_height}")
+    log.debug(f"point_width: {point_width}, point_height: {point_height}")
+
+    result = pixel_width != point_width or pixel_height != point_height
+
+    return result

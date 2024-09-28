@@ -1,7 +1,7 @@
 import logging
 
 try:
-    import win32gui as w32
+    import win32gui as w32  # type: ignore
 except:
     raise ImportError("Please install win32gui")
 

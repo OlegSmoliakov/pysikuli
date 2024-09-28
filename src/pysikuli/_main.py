@@ -865,14 +865,19 @@ def exist(
     elif isinstance(image, ScreenShot):
         image = repr(image)
 
-    max_loc_rel = tuple(int(point / config.PERCENT_IMAGE_DOWNSIZING * 100) for point in max_loc)
-    max_loc_abs = (tuple_region[0] + max_loc_rel[0], tuple_region[1] + max_loc_rel[1])
-
-    max_loc_abs_center = _getCenterLoc(img_width, img_height, max_loc_abs)
-
+    logging.debug(f"search result: {max_val} precision: {precision} img: {image}")
     if max_val < precision:
-        logging.debug(f"search result: {max_val} precision: {precision} img: {image}")
         return None
+
+    max_loc_rel = tuple(int(point / config.PERCENT_IMAGE_DOWNSIZING * 100) for point in max_loc)
+
+    if config.HIDPI:
+        max_loc_rel = (max_loc_rel[0] // 2, max_loc_rel[1] // 2)
+        img_width //= 2
+        img_height //= 2
+
+    max_loc_abs = (tuple_region[0] + max_loc_rel[0], tuple_region[1] + max_loc_rel[1])
+    max_loc_abs_center = _getCenterLoc(img_width, img_height, max_loc_abs)
 
     match_class = Match(
         up_left_loc=max_loc_abs,
