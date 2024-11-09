@@ -50,5 +50,5 @@ class TestUnix:
         assert captured == expected
 
     def test_getRefreshRate(self):
-        assert isinstance(unix._getRefreshRate(), int)
-        assert unix._getRefreshRate() == TEST_REFRESH_RATE
+        assert isinstance(unix.getRefreshRate(), int)
+        assert unix.getRefreshRate() == TEST_REFRESH_RATE

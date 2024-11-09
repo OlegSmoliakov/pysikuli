@@ -1,26 +1,25 @@
-import random
-import string
-import shutil
-import subprocess
-import os
-import functools
-import time
 import multiprocessing
+import os
+import random
+import shutil
+import string
+import subprocess
+import time
+from copy import copy
+from typing import Any, Callable, Generator, Literal
 
 import cv2
-import pytest
-import pymonctl as pmc
 import numpy as np
-import pywinctl as pwc
-
-from copy import copy
+import pymonctl as pmc
+import pytest
 from mss.screenshot import ScreenShot
+from pynput.keyboard._base import KeyCode
+from pytest_mock import MockerFixture
 
 import src.pysikuli as sik
-
-from src.pysikuli import _main as main, config
-from src.pysikuli._main import Region, Match
-
+from src.pysikuli import _main as main
+from src.pysikuli import config
+from src.pysikuli._main import Match, Region
 
 config.PERCENT_IMAGE_DOWNSIZING = 100
 
@@ -37,7 +36,7 @@ def half_width():
 
 
 @pytest.fixture()
-def test_reg_for_img(half_width):
+def test_reg_for_img(half_width: int):
     half_reg_monitor = [
         config.MONITOR_RESOLUTION[0] // 2,
         config.MONITOR_RESOLUTION[1] // 2,
@@ -52,7 +51,7 @@ def test_reg_for_img(half_width):
 
 
 @pytest.fixture()
-def test_reg_for_reg(test_reg_for_img, half_width):
+def test_reg_for_reg(test_reg_for_img: tuple, half_width: int):
     random.seed(time.time())
     mult = 1 + random.random() * 0.2
     test_reg_for_reg = (
@@ -65,27 +64,27 @@ def test_reg_for_reg(test_reg_for_img, half_width):
 
 
 @pytest.fixture()
-def test_img_ScreenShot(test_reg_for_img):
+def test_img_ScreenShot(test_reg_for_img: tuple):
     return main.grab(test_reg_for_img)
 
 
 @pytest.fixture()
-def test_reg_ScreenShot(test_reg_for_reg):
+def test_reg_ScreenShot(test_reg_for_reg: tuple):
     return main.grab(test_reg_for_reg)
 
 
 @pytest.fixture()
-def test_class_region(test_reg_for_reg):
+def test_class_region(test_reg_for_reg: tuple):
     return sik.Region(*test_reg_for_reg)
 
 
 @pytest.fixture()
-def test_img_ndarray(test_img_ScreenShot):
+def test_img_ndarray(test_img_ScreenShot: ScreenShot):
     return np.array(test_img_ScreenShot)
 
 
 @pytest.fixture()
-def test_reg_ndarray(test_reg_for_reg):
+def test_reg_ndarray(test_reg_for_reg: tuple):
     return np.array(main.grab(test_reg_for_reg))
 
 
@@ -107,7 +106,7 @@ def open_textEditor():
 
     yield window_name
 
-    titles = main.getAllWindowsTitle()
+    titles = sik.getAllTitles()
     if window_name in titles:
         main.closeWindow(window_name)
         sik.sleep(0.2)
@@ -125,7 +124,7 @@ def title_exist_window_name_2():
 
 
 @pytest.fixture()
-def cleanup_clipboard(open_textEditor):
+def cleanup_clipboard(open_textEditor: Literal["Unsaved Document 1"] | Literal[""]):
     sik.tap(sik.Key.space)
     sik.hotkey(sik.Key.shift, sik.Key.left)
     sik.hotkey(sik.Key.ctrl, "c", interval=0.05)
@@ -140,7 +139,7 @@ def random_np_img():
 
 
 @pytest.fixture()
-def saved_img(test_img_ndarray):
+def saved_img(test_img_ndarray: np.ndarray):
     path = main.saveNumpyImg(test_img_ndarray, "test_image")
     assert os.path.isfile(path)
 
@@ -150,7 +149,7 @@ def saved_img(test_img_ndarray):
 
 
 @pytest.fixture()
-def saved_random_img(random_np_img):
+def saved_random_img(random_np_img: np.ndarray):
     path = main.saveNumpyImg(random_np_img, "random_image")
     assert os.path.isfile(path)
 
@@ -160,13 +159,13 @@ def saved_random_img(random_np_img):
 
 
 @pytest.fixture()
-def test_match(test_class_region, test_reg_for_img):
+def test_match(test_class_region: Region, test_reg_for_img: tuple):
     img = main.grab(test_reg_for_img)
     return test_class_region.find(img, 0.5)
 
 
 @pytest.fixture()
-def path_with_pics(test_img_ndarray):
+def path_with_pics(test_img_ndarray: np.ndarray):
     path = os.path.join(os.getcwd(), "test_saved_pics")
     os.mkdir(path)
 
@@ -191,7 +190,7 @@ def execution_time_test(wrappedFunction, max_time=0.1):
 class TestMain:
     # utils section
 
-    def test_deleteFile(self, mocker):
+    def test_deleteFile(self, mocker: Callable[..., Generator[MockerFixture, None, None]]):
         file_name = "test.txt"
         with open(file_name, "w"):
             pass
@@ -213,7 +212,7 @@ class TestMain:
         assert not os.path.isfile(file_name)
 
     @pytest.mark.skipif(not config.UNIX, reason="OS specific test")
-    def test_copyToClip_Unix(self, random_str, cleanup_clipboard):
+    def test_copyToClip_Unix(self, random_str: str, cleanup_clipboard: None):
         # insert text into clipboard
         sik.activateWindow("*Unsaved Document 1")
         sik.copyToClip(random_str)
@@ -239,7 +238,7 @@ class TestMain:
         assert result == f"{random_str}\n"
 
     @pytest.mark.skipif(not config.UNIX, reason="OS specific test")
-    def test_pasteFromClip_UNIX(self, random_str, cleanup_clipboard):
+    def test_pasteFromClip_UNIX(self, random_str: str, cleanup_clipboard: None):
         # type text
         sik.activateWindow("*Unsaved Document 1")
 
@@ -260,7 +259,7 @@ class TestMain:
 
     # image searching section
 
-    def test_grab(self, test_reg_for_img):
+    def test_grab(self, test_reg_for_img: tuple):
         screenshot = main.grab(test_reg_for_img)
         assert isinstance(screenshot, ScreenShot)
         assert screenshot.left == test_reg_for_img[0]
@@ -268,7 +267,7 @@ class TestMain:
         assert screenshot.height == test_reg_for_img[3] - test_reg_for_img[1]
         assert screenshot.width == test_reg_for_img[2] - test_reg_for_img[0]
 
-    def test_getPixelRGB(self, saved_img, test_img_ScreenShot):
+    def test_getPixelRGB(self, saved_img: str, test_img_ScreenShot: ScreenShot):
         imread_img = cv2.imread(saved_img, cv2.IMREAD_COLOR)
         grab_img = np.array(test_img_ScreenShot)
 
@@ -302,7 +301,13 @@ class TestMain:
             (5, 5, (10, 10), (12, 12)),
         ],
     )
-    def test_getCenterLoc(self, w, h, loc, expected):
+    def test_getCenterLoc(
+        self,
+        w: Literal[2] | Literal[3] | Literal[4] | Literal[5],
+        h: Literal[2] | Literal[3] | Literal[4] | Literal[5],
+        loc: tuple[int, int],
+        expected: tuple[int, int],
+    ):
         assert main._getCenterLoc(w, h, loc) == expected
 
     @pytest.mark.skip("already tested in other functions")
@@ -323,16 +328,25 @@ class TestMain:
             pytest.param((1.0, 10.0), marks=pytest.mark.xfail),
         ],
     )
-    def test_locationValidation(self, loc):
+    def test_locationValidation(
+        self,
+        loc: (
+            list[int]
+            | tuple[Literal[2000], Literal[2000]]
+            | tuple[Literal[-1], Literal[-10]]
+            | tuple[float, float]
+            | Literal[500]
+        ),
+    ):
         main._locationValidation(loc)
 
     def test_regionNormalization(
         self,
-        test_class_region,
-        test_reg_for_reg,
-        test_img_ScreenShot,
-        test_reg_for_img,
-        test_img_ndarray,
+        test_class_region: Region,
+        test_reg_for_reg: tuple,
+        test_img_ScreenShot: ScreenShot,
+        test_reg_for_img: tuple,
+        test_img_ndarray: np.ndarray,
     ):
         regionNormalization = main._regionNormalization
         assert regionNormalization() == pmc.getPrimary().box
@@ -353,9 +367,9 @@ class TestMain:
 
     def test_regionToNumpyArray(
         self,
-        test_reg_for_reg,
-        test_reg_ndarray,
-        test_reg_ScreenShot,
+        test_reg_for_reg: tuple,
+        test_reg_ndarray: np.ndarray,
+        test_reg_ScreenShot: ScreenShot,
     ):
         # list
         np_reg, tuple_reg = main._regionToNumpyArray(list(test_reg_for_reg))
@@ -404,7 +418,7 @@ class TestMain:
             (10),
         ],
     )
-    def test_regionToNumpyArray_raises(self, reg):
+    def test_regionToNumpyArray_raises(self, reg: list[int] | Literal[0] | Literal[10]):
         with pytest.raises(TypeError):
             main._regionToNumpyArray(reg)
 
@@ -417,7 +431,11 @@ class TestMain:
             (["200", "300", "220", "600"], (200, 300, 220, 600)),
         ],
     )
-    def test_regionValidation(self, reg, expected):
+    def test_regionValidation(
+        self,
+        reg: tuple[int, int, int, int] | tuple[float, float, float, float] | list[int] | list[str],
+        expected: tuple[int, int, int, int],
+    ):
         assert main._regionValidation(reg) == expected
 
     @pytest.mark.parametrize(
@@ -432,12 +450,16 @@ class TestMain:
             ((1, 1, 2, 2000)),
         ],
     )
-    def test_regionValidation_raises(self, reg):
+    def test_regionValidation_raises(self, reg: Literal[1] | Literal[3] | Literal[-1]):
         # incorrect values test
         with pytest.raises(TypeError):
             main._regionValidation(reg)
 
-    def test_handleNpRegion(self, test_reg_ndarray, test_reg_for_reg):
+    def test_handleNpRegion(
+        self,
+        test_reg_ndarray: np.ndarray,
+        test_reg_for_reg: tuple,
+    ):
         ans = main._handleNpRegion(test_reg_ndarray, test_reg_for_reg)
         assert ans == (test_reg_ndarray, test_reg_for_reg)
 
@@ -456,7 +478,10 @@ class TestMain:
         indirect=["configSetAttribute"],
     )
     def test_matchProcessing_PERCENT_IMAGE_DOWNSIZING(
-        self, configSetAttribute, test_img_ndarray, test_reg_for_reg
+        self,
+        configSetAttribute: tuple[list],
+        test_img_ndarray: np.ndarray,
+        test_reg_for_reg: tuple,
     ):
         match = main._matchProcessing(test_img_ndarray, test_reg_for_reg)
         _, max_val, _, _ = cv2.minMaxLoc(match[2])
@@ -471,14 +496,18 @@ class TestMain:
         indirect=["configSetAttribute"],
     )
     def test_matchProcessing_GRAYSCALE(
-        self, configSetAttribute, expected, grayscale, random_np_img
+        self,
+        configSetAttribute: tuple[list],
+        expected: tuple[Literal[100], Literal[100]] | tuple[Literal[100], Literal[100], Literal[3]],
+        grayscale: bool,
+        random_np_img: np.ndarray,
     ):
         assert random_np_img.shape == (100, 100, 3)
 
         resize_image = sik._main._matchProcessing(random_np_img, grayscale=grayscale)
         assert resize_image[0].shape == expected
 
-    def test_matchProcessing_raises(self, test_img_ScreenShot):
+    def test_matchProcessing_raises(self, test_img_ScreenShot: ScreenShot):
         with pytest.raises(ValueError):
             main._matchProcessing(test_img_ScreenShot, [50, 50, 100, 100])
 
@@ -489,10 +518,10 @@ class TestMain:
 
     def test_exist(
         self,
-        test_img_ndarray,
-        test_reg_ndarray,
+        test_img_ndarray: np.ndarray,
+        test_reg_ndarray: np.ndarray,
         test_img_ScreenShot: ScreenShot,
-        test_reg_for_reg,
+        test_reg_for_reg: tuple,
     ):
         assert isinstance(main.exist(image=test_img_ndarray), Match)
         match = main.exist(
@@ -512,7 +541,7 @@ class TestMain:
             test_img_ScreenShot.height,
         )
 
-        assert main.avgRgbValues(test_img_ndarray, cropped_reg, 0.2)
+        assert main.avgRgbValues(test_img_ndarray, cropped_reg)
 
         match = main.exist(
             test_img_ndarray,
@@ -525,20 +554,24 @@ class TestMain:
         assert isinstance(match, Match)
 
     @pytest.mark.parametrize("img", [None, 1, [1, 2], (1, 2)])
-    def test_exist_raises(self, img):
+    def test_exist_raises(self, img: None | list[int] | Literal[1]):
         with pytest.raises(TypeError):
             main.exist(image=img)
 
-    def test_existAny(self, test_img_ScreenShot, test_img_ndarray):
+    def test_existAny(
+        self,
+        test_img_ScreenShot: ScreenShot,
+        test_img_ndarray: np.ndarray,
+    ):
         matches = main.existAny([test_img_ScreenShot, test_img_ndarray])
         for match in matches:
             assert isinstance(match, Match)
 
-    def test_existFromFolder(self, path_with_pics):
+    def test_existFromFolder(self, path_with_pics: str):
         ans = main.existFromFolder(path_with_pics)
         assert isinstance(ans, dict)
 
-    def test_existCount(self, test_img_ScreenShot):
+    def test_existCount(self, test_img_ScreenShot: ScreenShot):
         ans = main.existCount(test_img_ScreenShot)
         assert isinstance(ans, dict)
 
@@ -554,12 +587,16 @@ class TestMain:
             (10, (None, None)),
         ],
     )
-    def test_coordinateNormalization(self, loc_or_pic, expected):
+    def test_coordinateNormalization(
+        self,
+        loc_or_pic: None | tuple[int, int, int, int] | list[int] | Literal[10],
+        expected: tuple[None, None] | tuple[int, int, int, int] | list[int],
+    ):
         ans = main._coordinateNormalization(loc_or_pic)
         assert ans == expected
 
     def test_coordinateNormalization_2(
-        self, saved_img, test_match: Match, saved_random_img
+        self, saved_img: str, test_match: Match, saved_random_img: str
     ):
         ans = main._coordinateNormalization(saved_img)
         diff = vec_abs_diff(ans, test_match.center_loc)
@@ -569,7 +606,7 @@ class TestMain:
         with pytest.raises(TimeoutError):
             main._coordinateNormalization(saved_random_img, max_search_time=0.05)
 
-    def test_saveNumpyImg_raises(self, test_img_ndarray):
+    def test_saveNumpyImg_raises(self, test_img_ndarray: np.ndarray):
         with pytest.raises(FileExistsError):
             main.saveNumpyImg(test_img_ndarray, path="src")
 
@@ -589,7 +626,12 @@ class TestMain:
         assert os.path.isfile(path)
         os.remove(path)
 
-    def test_wait(self, test_img_ScreenShot, test_class_region: Region, random_np_img):
+    def test_wait(
+        self,
+        test_img_ScreenShot: ScreenShot,
+        test_class_region: Region,
+        random_np_img: np.ndarray,
+    ):
         ans = test_class_region.wait(test_img_ScreenShot)
         assert ans == True
 
@@ -597,7 +639,10 @@ class TestMain:
             test_class_region.wait(random_np_img, 0.05)
 
     def test_waitWhileExist(
-        self, test_img_ScreenShot, test_class_region: Region, random_np_img
+        self,
+        test_img_ScreenShot: ScreenShot,
+        test_class_region: Region,
+        random_np_img: np.ndarray,
     ):
         ans = test_class_region.waitWhileExist(test_img_ScreenShot, 0.05)
         assert ans == False
@@ -605,7 +650,11 @@ class TestMain:
         ans = test_class_region.waitWhileExist(random_np_img, 0.05)
         assert ans == True
 
-    def test_find(self, test_class_region: Region, random_np_img):
+    def test_find(
+        self,
+        test_class_region: Region,
+        random_np_img: np.ndarray,
+    ):
         ans = test_class_region.find(random_np_img, 0.1)
         assert ans == None
 
@@ -696,7 +745,12 @@ class TestMain:
             pytest.param(["test_title"], marks=pytest.mark.xfail),
         ],
     )
-    def test_titleCheck(self, window_title):
+    def test_titleCheck(
+        self,
+        window_title: (
+            None | list[str] | Literal["xfce4-panel"] | Literal["Desktop"] | Literal["test_title"]
+        ),
+    ):
         # we check only decorator, so print func uses as stub
         foo = main.titleCheck(print)
         assert foo(window_title) == None
@@ -711,13 +765,24 @@ class TestMain:
             (title_exist_window_name_2(), title_exist_window_name_2()),
         ],
     )
-    def test_windowExist(self, window_title, expected):
+    def test_windowExist(
+        self,
+        window_title: (
+            list[str]
+            | None
+            | Literal["test"]
+            | Literal[123]
+            | Literal["xfce4-panel"]
+            | Literal["Desktop"]
+        ),
+        expected: None | Literal["xfce4-panel"] | Literal["Desktop"],
+    ):
         assert sik.windowExist(window_title) == expected
 
     @pytest.mark.parametrize("win", [False, True])
-    def test_getAllWindowsTitle(self, win):
+    def test_getAllTitles(self, win: bool):
         setattr(config, "_WIN", win)
-        titles = main.getAllWindowsTitle()
+        titles = sik.getAllTitles()
         for title in titles:
             assert isinstance(title, str)
             assert len(title) > 0
@@ -732,21 +797,31 @@ class TestMain:
             title_exist_window_name_2(),
         ],
     )
-    def test_getWindowWithTitle(self, window_title):
+    def test_getWindowWithTitle(
+        self,
+        window_title: (
+            list[str]
+            | None
+            | Literal["test"]
+            | Literal[123]
+            | Literal["xfce4-panel"]
+            | Literal["Desktop"]
+        ),
+    ):
         window = main.getWindowWithTitle(window_title)
         assert hasattr(window, "maximize")
 
-    def test_getWindowRegion(self, open_textEditor):
+    def test_getWindowRegion(self, open_textEditor: Literal["Unsaved Document 1"] | Literal[""]):
         def foo():
             return main.getWindowRegion(open_textEditor)
 
         reg = execution_time_test(foo)
         assert isinstance(reg, Region)
 
-    def test_activateWindow(self, open_textEditor):
+    def test_activateWindow(self, open_textEditor: Literal["Unsaved Document 1"] | Literal[""]):
         expected_window = main.getWindowWithTitle(open_textEditor)
 
-        titles = main.getAllWindowsTitle()
+        titles = sik.getAllTitles()
         for title in titles:
             if "Visual Studio Code" in title:
                 main.activateWindow(title)
@@ -758,7 +833,7 @@ class TestMain:
         assert execution_time_test(foo)
         assert expected_window.isActive
 
-    def test_activateWindowAt(self, open_textEditor):
+    def test_activateWindowAt(self, open_textEditor: Literal["Unsaved Document 1"] | Literal[""]):
         expected_window = main.getWindowWithTitle(open_textEditor)
 
         reg = main.getWindowRegion(open_textEditor)
@@ -771,7 +846,9 @@ class TestMain:
         assert execution_time_test(foo)
         assert expected_window.isActive
 
-    def test_activateWindowUnderMouse(self, open_textEditor):
+    def test_activateWindowUnderMouse(
+        self, open_textEditor: Literal["Unsaved Document 1"] | Literal[""]
+    ):
         expected_window = main.getWindowWithTitle(open_textEditor)
 
         reg = main.getWindowRegion(open_textEditor)
@@ -786,7 +863,9 @@ class TestMain:
         assert execution_time_test(foo)
         assert expected_window.isActive
 
-    def test_getWindowUnderMouse(self, open_textEditor):
+    def test_getWindowUnderMouse(
+        self, open_textEditor: Literal["Unsaved Document 1"] | Literal[""]
+    ):
         expected_window = main.getWindowWithTitle(open_textEditor)
         reg = main.getWindowRegion(open_textEditor)
         x = random.randint(reg.x1, reg.x2)
@@ -799,7 +878,7 @@ class TestMain:
         window = execution_time_test(foo)
         assert window == expected_window
 
-    def test_minimizeWindow(self, open_textEditor):
+    def test_minimizeWindow(self, open_textEditor: Literal["Unsaved Document 1"] | Literal[""]):
         reg = main.getWindowRegion(open_textEditor)
         screenshot = main.grab(reg.reg)
 
@@ -812,7 +891,7 @@ class TestMain:
         assert main.exist(screenshot, grayscale=False) is None
         assert main.windowExist(open_textEditor) == open_textEditor
 
-    def test_closeWindow(self, open_textEditor):
+    def test_closeWindow(self, open_textEditor: Literal["Unsaved Document 1"] | Literal[""]):
         main.activateWindow(open_textEditor)
 
         def foo():
@@ -822,7 +901,7 @@ class TestMain:
 
         assert main.windowExist(open_textEditor) is None
 
-    def test_maximizeWindow(self, open_textEditor):
+    def test_maximizeWindow(self, open_textEditor: Literal["Unsaved Document 1"] | Literal[""]):
         assert main.maximizeWindow(open_textEditor)
 
     # popups section
@@ -845,7 +924,7 @@ class TestMain:
 
 
 @pytest.fixture()
-def configSetAttribute(request):
+def configSetAttribute(request: pytest.FixtureRequest):
     attrs_to_modify = {item[0]: item[1] for item in request.param}
     original_values = {attr: getattr(config, attr) for attr in attrs_to_modify.keys()}
 
@@ -864,7 +943,7 @@ class TestPauseBetweenAction:
         [(["PAUSE_BETWEEN_ACTION", 0.5],)],
         indirect=True,
     )
-    def test_PAUSE_BETWEEN_ACTION_deleteFile(self, configSetAttribute):
+    def test_PAUSE_BETWEEN_ACTION_deleteFile(self, configSetAttribute: str | float):
         assert config.PAUSE_BETWEEN_ACTION == 0.5
         path = os.path.join(os.getcwd(), "test.test")
         with open(path, "w"):
@@ -904,12 +983,12 @@ def vec_abs_diff(vec1, vec2):
 class TestMatch:
     def test_init(
         self,
-        test_img_ndarray,
-        test_reg_ndarray,
-        test_reg_for_img,
+        test_img_ndarray: np.ndarray,
+        test_reg_ndarray: np.ndarray,
+        test_reg_for_img: tuple,
         test_class_region: main.Region,
-        test_img_ScreenShot,
-        half_width,
+        test_img_ScreenShot: ScreenShot,
+        half_width: int,
     ):
         GRAYSCALE = False
         PRECISION = 0.6
@@ -956,22 +1035,20 @@ class TestMatch:
         center_pixel = main.getPixelRGB((half_width, half_width), test_img_ndarray)
         assert test_match.center_pixel == center_pixel
 
-    @pytest.mark.parametrize(
-        "key", ["q", sik.Key.esc, sik.Key.backspace, sik.Key.space]
-    )
+    @pytest.mark.parametrize("key", ["q", sik.Key.esc, sik.Key.backspace, sik.Key.space])
     @pytest.mark.usefixtures("show_image")
-    def test_showImage_key_closure(self, key):
+    def test_showImage_key_closure(self, key: KeyCode | Literal["q"]):
         sik.tap(key)
 
-    @pytest.mark.parametrize(
-        "key", ["q", sik.Key.esc, sik.Key.backspace, sik.Key.space]
-    )
+    @pytest.mark.parametrize("key", ["q", sik.Key.esc, sik.Key.backspace, sik.Key.space])
     @pytest.mark.usefixtures("show_region")
-    def test_showRegion_key_closure(self, key):
+    def test_showRegion_key_closure(self, key: KeyCode | Literal["q"]):
         sik.tap(key)
 
     @pytest.mark.parametrize("offset", [50, 100, 150])
-    def test_setTargetOffset(self, test_match: main.Match, offset):
+    def test_setTargetOffset(
+        self, test_match: main.Match, offset: Literal[50] | Literal[100] | Literal[150]
+    ):
         x, y = test_match.center_loc
         expected_loc = (x + offset, y + offset)
         assert expected_loc == test_match.setTargetOffset(offset, offset)
@@ -981,28 +1058,31 @@ class TestMatch:
         [(50, 2000), (2000, 50), (-50, -2000), (-2000, -50)],
     )
     def test_setTargetOffset_ValueError(
-        self, test_match: main.Match, offset_x, offset_y
+        self,
+        test_match: main.Match,
+        offset_x: Literal[50] | Literal[2000] | Literal[-50] | Literal[-2000],
+        offset_y: Literal[2000] | Literal[50] | Literal[-2000] | Literal[-50],
     ):
         x, y = test_match.center_loc
         expected_loc = (x + offset_x, y + offset_y)
         with pytest.raises(ValueError):
             assert expected_loc == test_match.setTargetOffset(offset_x, offset_y)
 
-    def test_eq(self, test_match):
+    def test_eq(self, test_match: Any):
         assert test_match == test_match
 
-    def test_ne(self, test_match):
+    def test_ne(self, test_match: Any):
         local_test_match = copy(test_match)
         local_test_match.center_loc = (10, 10)
         assert test_match != local_test_match
 
-    def test_repr(self, test_match):
+    def test_repr(self, test_match: Any):
         assert isinstance(str(test_match), str)
 
 
 @pytest.mark.usefixtures("test_setup")
 class TestRegion:
-    def test_init(self, test_reg_for_reg):
+    def test_init(self, test_reg_for_reg: tuple):
         reg = Region(*test_reg_for_reg)
         reg.time_step = 1
         assert reg.reg == test_reg_for_reg
@@ -1012,22 +1092,22 @@ class TestRegion:
         assert reg.y2 == test_reg_for_reg[3]
         assert reg.time_step == 1
 
-    def test_repr_str(self, test_class_region):
+    def test_repr_str(self, test_class_region: Region):
         assert str(test_class_region) == repr(test_class_region)
 
-    def test_eq(self, test_class_region):
+    def test_eq(self, test_class_region: Region):
         assert test_class_region == test_class_region
 
-    def test_ne(self, test_class_region):
+    def test_ne(self, test_class_region: Region):
         local_reg = Region(10, 10, 12, 12)
         assert test_class_region != local_reg
 
-    def test_lt_le(self, test_class_region):
+    def test_lt_le(self, test_class_region: Region):
         local_reg = Region(10, 10, 12, 12)
         assert local_reg < test_class_region
         assert local_reg <= test_class_region
 
-    def test_gt_ge(self, test_class_region):
+    def test_gt_ge(self, test_class_region: Region):
         local_reg = Region(0, 0, 1000, 1000)
         assert local_reg > test_class_region
         assert local_reg >= test_class_region

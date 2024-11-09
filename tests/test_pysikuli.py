@@ -49,7 +49,7 @@ class TestPysikuli:
         sik.getWindowRegion
         sik.getWindowWithTitle
         sik.getWindowUnderMouse
-        sik.getAllWindowsTitle
+        sik.getAllTitles
         sik.minimizeWindow
         sik.maximizeWindow
         sik.closeWindow
