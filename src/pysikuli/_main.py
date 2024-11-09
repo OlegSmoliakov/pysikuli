@@ -1550,7 +1550,7 @@ def windowExist(window_title: str):
 
     Args:
         window_title (str): full window name, e.g. "Mozilla Firefox".
-        To get all available titles, use `pysikuli.getAllWindowsTitle()`
+        To get all available titles, use `pysikuli.getAllTitles()`
 
     Returns:
         str | None : full window title
@@ -1577,7 +1577,7 @@ def getWindowWithTitle(window_title: str):
     Args
     ----
         window_title (str): full window name, e.g. "Mozilla Firefox".
-        To get all available titles, use `pysikuli.getAllWindowsTitle()`
+        To get all available titles, use `pysikuli.getAllTitles()`
 
     Returns
     -------
@@ -1594,7 +1594,7 @@ def activateWindow(window_title: str):
     Args
     ----
         window_title (str): full window name, e.g. "Mozilla Firefox".
-        To get all available titles, use `pysikuli.getAllWindowsTitle()`
+        To get all available titles, use `pysikuli.getAllTitles()`
 
     Returns
     -------
@@ -1650,7 +1650,7 @@ def getWindowRegion(window_title: str):
     Args
     ----
         window_title (str): full window name, e.g. "Mozilla Firefox".
-        To get all available titles, use `pysikuli.getAllWindowsTitle()`
+        To get all available titles, use `pysikuli.getAllTitles()`
 
     Returns
     -------
@@ -1682,7 +1682,7 @@ def closeWindow(window_title: str):
     Args
     ----
         window_title (str): full window name, e.g. "Mozilla Firefox".
-        To get all available titles, use `pysikuli.getAllWindowsTitle()`
+        To get all available titles, use `pysikuli.getAllTitles()`
 
     Returns
     -------
@@ -1698,7 +1698,7 @@ def maximizeWindow(window_title: str):
     Args
     ----
         window_title (str): full window name, e.g. "Mozilla Firefox".
-        To get all available titles, use `pysikuli.getAllWindowsTitle()`
+        To get all available titles, use `pysikuli.getAllTitles()`
 
     Returns
     -------
@@ -1716,7 +1716,7 @@ def minimizeWindow(window_title: str):
     Args
     ----
         window_title (str): full window name, e.g. "Mozilla Firefox".
-        To get all available titles, use `pysikuli.getAllWindowsTitle()`
+        To get all available titles, use `pysikuli.getAllTitles()`
 
     Returns
     -------
