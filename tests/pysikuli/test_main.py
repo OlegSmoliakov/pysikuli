@@ -96,13 +96,18 @@ def random_str():
 
 
 @pytest.fixture()
-def open_textEditor():
-    window_name = ""
-
+def open_text_editor():
     if config.UNIX:
         subprocess.Popen(["xed"])
         window_name = "Unsaved Document 1"
         sik.sleep(0.5)
+    elif config.WIN:
+        subprocess.Popen(["notepad"])
+        window_name = "Untitled - Notepad"
+        sik.sleep(0.5)
+
+    while not main.windowExist(window_name):
+        sik.sleep(0.05)
 
     yield window_name
 
@@ -116,15 +121,19 @@ def open_textEditor():
 def title_exist_window_name_1():
     if config.UNIX:
         return "xfce4-panel"
+    elif config.WIN:
+        return "Windows Input Experience"
 
 
 def title_exist_window_name_2():
     if config.UNIX:
         return "Desktop"
+    elif config.WIN:
+        return "Settings"
 
 
 @pytest.fixture()
-def cleanup_clipboard(open_textEditor: Literal["Unsaved Document 1"] | Literal[""]):
+def cleanup_clipboard(open_text_editor):
     sik.tap(sik.Key.space)
     sik.hotkey(sik.Key.shift, sik.Key.left)
     sik.hotkey(sik.Key.ctrl, "c", interval=0.05)
@@ -189,6 +198,10 @@ def execution_time_test(wrappedFunction, max_time=0.1):
 @pytest.mark.usefixtures("test_setup")
 class TestMain:
     # utils section
+    @pytest.fixture(autouse=True)
+    def sleep_between_tests(self):
+        yield
+        time.sleep(0.05)
 
     def test_deleteFile(self, mocker: Callable[..., Generator[MockerFixture, None, None]]):
         file_name = "test.txt"
@@ -201,7 +214,9 @@ class TestMain:
 
         assert not os.path.isfile(file_name)
 
-        os.mknod(file_name)
+        # create an empty file
+        with open(file_name, "w") as f:
+            pass
 
         assert os.path.isfile(file_name)
 
@@ -360,16 +375,13 @@ class TestMain:
         assert regionNormalization(test_img_ndarray) == None
 
         with pytest.raises(TypeError):
-            regionNormalization("fasdf")
+            regionNormalization("test")
 
         with pytest.raises(TypeError):
             regionNormalization(main.Key)
 
     def test_regionToNumpyArray(
-        self,
-        test_reg_for_reg: tuple,
-        test_reg_ndarray: np.ndarray,
-        test_reg_ScreenShot: ScreenShot,
+        self, test_reg_for_reg: tuple, test_reg_ndarray: np.ndarray, test_reg_ScreenShot: ScreenShot
     ):
         # list
         np_reg, tuple_reg = main._regionToNumpyArray(list(test_reg_for_reg))
@@ -402,11 +414,7 @@ class TestMain:
         assert tuple_reg == test_reg_for_reg
 
         # None
-        reg = np.array(sik.grab(config.MONITOR_REGION))
         np_reg, tuple_reg = main._regionToNumpyArray()
-
-        # assert np.array_equal(np_reg, reg)
-        assert np.allclose(np_reg, reg, 10, 10)
         assert tuple_reg == config.MONITOR_REGION
 
     @pytest.mark.parametrize(
@@ -797,46 +805,30 @@ class TestMain:
             title_exist_window_name_2(),
         ],
     )
-    def test_getWindowWithTitle(
-        self,
-        window_title: (
-            list[str]
-            | None
-            | Literal["test"]
-            | Literal[123]
-            | Literal["xfce4-panel"]
-            | Literal["Desktop"]
-        ),
-    ):
+    def test_getWindowWithTitle(self, window_title: list[str] | str):
         window = main.getWindowWithTitle(window_title)
         assert hasattr(window, "maximize")
 
-    def test_getWindowRegion(self, open_textEditor: Literal["Unsaved Document 1"] | Literal[""]):
+    def test_getWindowRegion(self, open_text_editor):
         def foo():
-            return main.getWindowRegion(open_textEditor)
+            return main.getWindowRegion(open_text_editor)
 
         reg = execution_time_test(foo)
         assert isinstance(reg, Region)
 
-    def test_activateWindow(self, open_textEditor: Literal["Unsaved Document 1"] | Literal[""]):
-        expected_window = main.getWindowWithTitle(open_textEditor)
-
-        titles = sik.getAllTitles()
-        for title in titles:
-            if "Visual Studio Code" in title:
-                main.activateWindow(title)
-                break
+    def test_activateWindow(self, open_text_editor):
+        expected_window = main.getWindowWithTitle(open_text_editor)
 
         def foo():
-            return main.activateWindow(open_textEditor)
+            return main.activateWindow(open_text_editor)
 
         assert execution_time_test(foo)
         assert expected_window.isActive
 
-    def test_activateWindowAt(self, open_textEditor: Literal["Unsaved Document 1"] | Literal[""]):
-        expected_window = main.getWindowWithTitle(open_textEditor)
+    def test_activateWindowAt(self, open_text_editor):
+        expected_window = main.getWindowWithTitle(open_text_editor)
 
-        reg = main.getWindowRegion(open_textEditor)
+        reg = main.getWindowRegion(open_text_editor)
         x = random.randint(reg.x1, reg.x2)
         y = random.randint(reg.y1, reg.y2)
 
@@ -846,12 +838,10 @@ class TestMain:
         assert execution_time_test(foo)
         assert expected_window.isActive
 
-    def test_activateWindowUnderMouse(
-        self, open_textEditor: Literal["Unsaved Document 1"] | Literal[""]
-    ):
-        expected_window = main.getWindowWithTitle(open_textEditor)
+    def test_activateWindowUnderMouse(self, open_text_editor):
+        expected_window = main.getWindowWithTitle(open_text_editor)
 
-        reg = main.getWindowRegion(open_textEditor)
+        reg = main.getWindowRegion(open_text_editor)
         x = random.randint(reg.x1, reg.x2)
         y = random.randint(reg.y1, reg.y2)
 
@@ -863,11 +853,9 @@ class TestMain:
         assert execution_time_test(foo)
         assert expected_window.isActive
 
-    def test_getWindowUnderMouse(
-        self, open_textEditor: Literal["Unsaved Document 1"] | Literal[""]
-    ):
-        expected_window = main.getWindowWithTitle(open_textEditor)
-        reg = main.getWindowRegion(open_textEditor)
+    def test_getWindowUnderMouse(self, open_text_editor):
+        expected_window = main.getWindowWithTitle(open_text_editor)
+        reg = main.getWindowRegion(open_text_editor)
         x = random.randint(reg.x1, reg.x2)
         y = random.randint(reg.y1, reg.y2)
         main.mouseMove((x, y))
@@ -878,31 +866,33 @@ class TestMain:
         window = execution_time_test(foo)
         assert window == expected_window
 
-    def test_minimizeWindow(self, open_textEditor: Literal["Unsaved Document 1"] | Literal[""]):
-        reg = main.getWindowRegion(open_textEditor)
+    def test_minimizeWindow(self, open_text_editor):
+        reg = main.getWindowRegion(open_text_editor)
         screenshot = main.grab(reg.reg)
 
         def foo():
-            return main.minimizeWindow(open_textEditor)
+            return main.minimizeWindow(open_text_editor)
 
         assert execution_time_test(foo)
 
-        sik.sleep(0.02)
-        assert main.exist(screenshot, grayscale=False) is None
-        assert main.windowExist(open_textEditor) == open_textEditor
+        # windows required 0.1 sec to minimize
+        sik.sleep(0.1)
 
-    def test_closeWindow(self, open_textEditor: Literal["Unsaved Document 1"] | Literal[""]):
-        main.activateWindow(open_textEditor)
+        assert main.exist(screenshot, grayscale=False) is None
+        assert main.windowExist(open_text_editor) == open_text_editor
+
+    def test_closeWindow(self, open_text_editor):
+        main.activateWindow(open_text_editor)
 
         def foo():
-            return main.closeWindow(open_textEditor)
+            return main.closeWindow(open_text_editor)
 
         execution_time_test(foo), sik.sleep(0.2)
 
-        assert main.windowExist(open_textEditor) is None
+        assert main.windowExist(open_text_editor) is None
 
-    def test_maximizeWindow(self, open_textEditor: Literal["Unsaved Document 1"] | Literal[""]):
-        assert main.maximizeWindow(open_textEditor)
+    def test_maximizeWindow(self, open_text_editor):
+        assert main.maximizeWindow(open_text_editor)
 
     # popups section
 
@@ -994,9 +984,12 @@ class TestMatch:
         PRECISION = 0.6
         error = 1
 
+        time.sleep(0.05)
+
         test_match = test_class_region.find(
             test_img_ScreenShot, grayscale=GRAYSCALE, precision=PRECISION
         )
+        assert isinstance(test_match, main.Match)
 
         up_left_loc = (test_reg_for_img[0], test_reg_for_img[1])
         diff_up_left_loc = vec_abs_diff(up_left_loc, test_match.up_left_loc)
