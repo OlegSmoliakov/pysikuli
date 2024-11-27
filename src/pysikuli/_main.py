@@ -499,14 +499,14 @@ def waitStaticRegion(region, time_without_changes=0.5, max_checking_time=-1, che
     Waits for a static content in region by continuously capturing screenshots and checking for changes.
 
     Args:
-    ----
+
         region (Region): The region to monitor for changes.
         time_without_changes (float, optional): The time in seconds to wait without any changes before considering the region as static. Defaults to 0.5.
         max_checking_time (float, optional): The maximum time in seconds to wait for changes. If set to -1, it will wait indefinitely. Defaults to -1.
         check_interval (float, optional): The time interval in seconds between each check for changes. Defaults to 0.2.
 
     Returns:
-    -------
+
         bool: True if the region remains static for the specified time, False otherwise.
     """
 
@@ -617,15 +617,12 @@ def _regionNormalization(reg: ScreenShot | Region | Sequence | np.ndarray = None
     Normalize the input region.
 
     Args:
-    -------
         reg (ScreenShot | Region | Sequence | np.ndarray, optional): The input region to be normalized. Defaults to None.
 
     Returns:
-    -------
         The normalized region.
 
     Raises:
-    -------
         TypeError: If the entered region's type is incorrect.
 
     Supported types for `reg`:
@@ -662,11 +659,11 @@ def _regionNormalization(reg: ScreenShot | Region | Sequence | np.ndarray = None
 
 
 def _handleNpRegion(np_region: np.ndarray, tuple_region: tuple[int, int, int, int]):
-    """handler for validation np.array as region for futher _matchProcessing
+    """handler for validation np.array as region for further _matchProcessing
 
     Args:
         np_region (np.ndarray): np_region
-        tuple_region (tuple[int, int, int, int]): the borderds of this np_region
+        tuple_region (tuple[int, int, int, int]): the borders of this np_region
 
     Raises:
         TypeError: in case there is no tuple_region
@@ -753,7 +750,7 @@ def _matchProcessing(
     else:
         image_capture = np_image
         region_capture = np_region
-        # both images must be stored in BGR format for futher matchTemplate
+        # both images must be stored in BGR format for further matchTemplate
         np_image = cv2.cvtColor(np_image, cv2.COLOR_RGB2BGR)
         np_region = cv2.cvtColor(np_region, cv2.COLOR_RGB2BGR)
 
@@ -821,17 +818,17 @@ def exist(
     rgb_diff: float = None,
     _tuple_region: tuple | list = None,
 ):
-    # TODO: create full discription
+    # TODO: create full description
     # TODO: find out simple way to debug from main or other scripts
     """
-    Searchs for an image within an area or on the screen
+    Searches for an image within an area or on the screen
 
     input :
 
     image : path to the image file (see opencv imread for supported types)
     region : (x1, y1, x2, y2)
     precision : the higher, the lesser tolerant and fewer false positives are found default is 0.8
-    numpy_region : a PIL or numpy image, usefull if you intend to search the same unchanging region for several elements, must be stored in `RGB format`
+    numpy_region : a PIL or numpy image, useful if you intend to search the same unchanging region for several elements, must be stored in `RGB format`
 
     returns :
     the top left corner coordinates of the element if found as an array [x,y] or [-1,-1] if not
@@ -985,7 +982,7 @@ def existCount(
 
     returns :
     the number of times a given image appears on the screen.
-    optionally an output image with all the occurances boxed with a red outline.
+    optionally an output image with all the occurrences boxed with a red outline.
     """
 
     precision = precision if precision is not None else config.MIN_PRECISION
@@ -1124,7 +1121,7 @@ def tap(key, presses=1, interval=0.0, time_step: float = None):
         key (_type_): _description_
         presses (int, optional): number of times the entered key is pressed. Defaults to 1.
         interval (float, optional): time interval after each tap. Defaults to 0.0.
-        time_step (float, optional): time interval after each key press and each key realese. Defaults to None.
+        time_step (float, optional): time interval after each key press and each key release. Defaults to None.
     """
     time_step = time_step if time_step is not None else config.TIME_STEP
 
@@ -1192,7 +1189,7 @@ def scroll(dx=0, dy=0):
     """Sends scroll events.
 
     Args
-    ----
+
         dx (int, optional): The horizontal scroll. The units of scrolling is
         undefined.
         dy (int, optional): The vertical scroll. The units of scrolling is
@@ -1206,9 +1203,9 @@ def smoothScroll(ticks=1, speed_x=0, speed_y=1):
     """Sends scroll events depend on ticks and speed
 
     Args:
-    -----
+    -
         ticks (int, optional): roughly equivalent of 1 scroll tick.
-        speed_x (int, optional): horizontal scroolling speed.
+        speed_x (int, optional): horizontal scrolling speed.
         speed_y (int, optional): vertical scrolling speed.
     """
     step_x, step_y = 1, 1
@@ -1461,7 +1458,7 @@ def rightClick(
     clicks=1,
     interval=0.0,
 ):
-    # TODO: correct the discription
+    # TODO: correct the description
     """
     Performs a right mouse button click.
 
@@ -1511,7 +1508,7 @@ def dragDrop(
     Args:
         start_location (list): x, y start location example: [1200, 700]
         end_location (list): x, y end location example: [1400, 700]
-        butt (str, optional): Which button will be holded. Defaults to "left".
+        butt (str, optional): Which button will be held down. Defaults to "left".
     """
 
     if not start_location:
@@ -1550,38 +1547,40 @@ def windowExist(window_title: str):
 
     Args:
         window_title (str): full window name, e.g. "Mozilla Firefox".
-        To get all available titles, use `pysikuli.getAllTitles()`
 
     Returns:
-        str | None : full window title
+        (str | None): The return value. True for success, False otherwise.
+
+    To get all available titles, use `pysikuli.getAllTitles()`
     """
     if not isinstance(window_title, str):
         logging.debug(f"window title isn't string: {window_title}")
         return None
+
+    title = None
     window_title = window_title.lower()
     titles = config._platformModule.getAllTitles()
     titles_lower = [title.lower() for title in titles]
+
     for i in range(len(titles_lower)):
         if window_title == titles_lower[i]:
             title = titles[i]
             break
-    if "title" in locals():
-        return title
-    return None
+
+    return title
 
 
 @titleCheck
 def getWindowWithTitle(window_title: str):
     """Get the window objects whose title match the given string
 
-    Args
-    ----
-        window_title (str): full window name, e.g. "Mozilla Firefox".
-        To get all available titles, use `pysikuli.getAllTitles()`
+    Args:
+        window_title (str): full window name, e.g. "Mozilla Firefox"
 
-    Returns
-    -------
-        Window object | None
+    Returns:
+        (Window object | None)
+
+    To get all available titles, use `pysikuli.getAllTitles()`
     """
     return pwc.getWindowsWithTitle(window_title)[0]
 
@@ -1592,12 +1591,12 @@ def activateWindow(window_title: str):
     """Activate entered window and make it the foreground (focused) window
 
     Args
-    ----
+
         window_title (str): full window name, e.g. "Mozilla Firefox".
         To get all available titles, use `pysikuli.getAllTitles()`
 
     Returns
-    -------
+
         bool: "True" if window activated
     """
     if config.OSX:
@@ -1610,8 +1609,7 @@ def activateWindow(window_title: str):
 def getWindowUnderMouse():
     """Get the Window object at the top of the stack under mouse position
 
-    Returns
-    -------
+    Returns:
         Window object | None
     """
     return pwc.getTopWindowAt(*mouse.position)
@@ -1621,8 +1619,7 @@ def getWindowUnderMouse():
 def activateWindowUnderMouse():
     """Activate the top window under mouse position
 
-    Returns
-    -------
+    Returns:
         bool : "True" if window is activated
     """
     return pwc.getTopWindowAt(*mouse.position).activate(config.WINDOW_WAITING_CONFIRMATION)
@@ -1632,12 +1629,10 @@ def activateWindowUnderMouse():
 def activateWindowAt(location: tuple[int, int]):
     """Activate the top window under entered location(x, y)
 
-    Args
-    ----
+    Args:
         location (tuple[int, int]): tuple with int coordinates (x, y)
 
-    Returns
-    -------
+    Returns:
         bool : "True" if window is activated
     """
     return pwc.getTopWindowAt(*location).activate(config.WINDOW_WAITING_CONFIRMATION)
@@ -1647,14 +1642,13 @@ def activateWindowAt(location: tuple[int, int]):
 def getWindowRegion(window_title: str):
     """grab the window region window by it's name
 
-    Args
-    ----
+    Args:
         window_title (str): full window name, e.g. "Mozilla Firefox".
-        To get all available titles, use `pysikuli.getAllTitles()`
 
-    Returns
-    -------
+    Returns:
         Region : an object of class `Region`, if the window is within the screen boundaries and exists
+
+    To get all available titles, use `pysikuli.getAllTitles()`
     """
     # NOTE: got these values on my laptop, may be different
     x1_offset, x2_offset, y2_offset = 0, 0, 0
@@ -1679,14 +1673,13 @@ def closeWindow(window_title: str):
     This may trigger "Are you sure you want to quit?" dialogs or
     other actions that prevent the window from actually closing.
 
-    Args
-    ----
+    Args:
         window_title (str): full window name, e.g. "Mozilla Firefox".
-        To get all available titles, use `pysikuli.getAllTitles()`
 
-    Returns
-    -------
+    Returns:
         bool: "True" if window is closed
+
+    To get all available titles, use `pysikuli.getAllTitles()`
     """
     return pwc.getWindowsWithTitle(window_title)[0].close()
 
@@ -1695,14 +1688,13 @@ def closeWindow(window_title: str):
 def maximizeWindow(window_title: str):
     """Maximizes entered window
 
-    Args
-    ----
+    Args:
         window_title (str): full window name, e.g. "Mozilla Firefox".
-        To get all available titles, use `pysikuli.getAllTitles()`
 
-    Returns
-    -------
+    Returns:
         bool: "True" if window is maximized
+
+    To get all available titles, use `pysikuli.getAllTitles()`
     """
     window = pwc.getWindowsWithTitle(window_title)[0]
     return window.maximize(config.WINDOW_WAITING_CONFIRMATION)
@@ -1713,29 +1705,26 @@ def maximizeWindow(window_title: str):
 def minimizeWindow(window_title: str):
     """Minimizes entered window
 
-    Args
-    ----
+    Args:
         window_title (str): full window name, e.g. "Mozilla Firefox".
-        To get all available titles, use `pysikuli.getAllTitles()`
 
-    Returns
-    -------
+    Returns:
         bool : "True" if window minimized
+
+    To get all available titles, use `pysikuli.getAllTitles()`
     """
     return pwc.getWindowsWithTitle(window_title)[0].minimize(config.WINDOW_WAITING_CONFIRMATION)
 
 
 def _rootTimeoutNorm(root: tuple[int, int], timeout: float):
-    """Applied rootWindowPosition and return `timeout` in miliseconds
+    """Applied rootWindowPosition and return `timeout` in milliseconds
 
-    Args
-    ----
+    Args:
         root (tuple[int, int]): left top corner location.
         timeout (float): time in seconds after which message box will be closed.
 
-    Returns
-    -------
-        int : timeout in miliseconds
+    Returns:
+        int : timeout in milliseconds
     """
     if root:
         pmb.rootWindowPosition = f"+{root[0]}+{root[1]}"
@@ -1754,16 +1743,14 @@ def popupAlert(
 ):
     """Displays a simple message box with text and a single OK button.
 
-    Args
-    ----
+    Args:
         text (str, optional): message above input text.
         title (str, optional): message box title.
         root (tuple[int, int], optional): left top corner location. Defaults gets from `config.ROOT_WINDOW_POSITION`.
         timeout (float, optional): time in seconds after which message box will be closed.
 
-    Returns
-    -------
-        str | None : the text of the button clicked on, or "Timeout" if time has elapsed.
+    Returns:
+        (str | None): the text of the button clicked on, or "Timeout" if time has elapsed.
     """
     timeout = _rootTimeoutNorm(root, timeout)
     return pmb.alert(text, title, timeout=timeout)
@@ -1779,8 +1766,7 @@ def popupPassword(
 ):
     """Displays a message box with text input, and OK & Cancel buttons. Typed characters appear as \* by default.
 
-    Args
-    ----
+    Args:
         text (str, optional): message above input text.
         title (str, optional): message box title.
         default (str, optional): default value for input text.
@@ -1788,9 +1774,8 @@ def popupPassword(
         root (tuple[int, int], optional): left top corner location. Defaults gets from `config.ROOT_WINDOW_POSITION`.
         timeout (float, optional): time in seconds after which message box will be closed.
 
-    Returns
-    -------
-        str | None : the entered text, None if Cancel was clicked, or "Timeout" if time has elapsed.
+    Returns:
+        (str | None): the entered text, None if Cancel was clicked, or "Timeout" if time has elapsed.
     """
     timeout = _rootTimeoutNorm(root, timeout)
     return pmb.password(text, title, default, mask, timeout=timeout)
@@ -1805,17 +1790,15 @@ def popupPrompt(
 ):
     """Displays a message box with text input, and OK & Cancel buttons.
 
-    Args
-    ----
+    Args:
         text (str, optional): message above input text.
         title (str, optional): message box title.
         default (str, optional): default value for input text.
         root (tuple[int, int], optional): left top corner location. Defaults gets from `config.ROOT_WINDOW_POSITION`.
         timeout (float, optional): time in seconds after which message box will be closed.
 
-    Returns
-    -------
-        str | None : the entered text, None if Cancel was clicked, or "Timeout" if time has elapsed.
+    Returns:
+        (str | None): the entered text, None if Cancel was clicked, or "Timeout" if time has elapsed.
     """
     timeout = _rootTimeoutNorm(root, timeout)
     return pmb.prompt(text, title, default, timeout=timeout)
@@ -1831,16 +1814,14 @@ def popupConfirm(
     """
     Displays a message box with OK and Cancel buttons. Number and text of buttons can be customized.
 
-    Args
-    ----
+    Args:
         text (str, optional): message above buttons.
         title (str, optional): message box title.
         buttons (tuple, optional): tuple of strings, each string represent a button.
         root (tuple[int, int], optional): left top corner location. Defaults gets from `config.ROOT_WINDOW_POSITION`.
         timeout (float, optional): time in seconds after which message box will be closed.
 
-    Returns
-    -------
+    Returns:
         str: the text of the button clicked on, or "Timeout" if time has elapsed.
     """
     timeout = _rootTimeoutNorm(root, timeout)
@@ -1851,8 +1832,7 @@ def popupConfirm(
 def deleteFile(file_path: os.PathLike):
     """func first tries to move the file to the bin, otherwise uses os.remove for permanently deletion
 
-    Args
-    ----
+    Args:
         file_path (PathLike): full path to the file
     """
     logging.debug(f"deleting {file_path}")

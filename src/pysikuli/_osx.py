@@ -1,12 +1,12 @@
+import logging
 import re
 import subprocess
-import logging
+import time
 
 import Quartz
-
-from Quartz import CoreGraphics as CG
-from AppKit import NSWorkspace, NSApplicationActivateIgnoringOtherApps
+from AppKit import NSApplicationActivateIgnoringOtherApps, NSWorkspace
 from pynput.keyboard import Key
+from Quartz import CoreGraphics as CG
 
 log = logging.getLogger(__name__)
 
@@ -90,6 +90,8 @@ def getMonitorRegion():
 
 
 def activateWindow(window_title: str):
+    # NOTE can be used to hide, terminate
+
     # store info about all apps
     element = Quartz.CGWindowListCopyWindowInfo(
         Quartz.kCGWindowListOptionOnScreenOnly, Quartz.kCGNullWindowID
@@ -101,6 +103,9 @@ def activateWindow(window_title: str):
             owner_pid = window_info[Quartz.kCGWindowOwnerPID]
             owner_name = window_info[Quartz.kCGWindowOwnerName]
 
+    if "owner_pid" not in locals():
+        return False
+
     apps = NSWorkspace.sharedWorkspace().runningApplications()
 
     for app in apps:
@@ -108,7 +113,36 @@ def activateWindow(window_title: str):
             window = app
 
     window.activateWithOptions_(NSApplicationActivateIgnoringOtherApps)
-    # NOTE can be used to hide, terminate
+    time.sleep(0.0001)  # wait for the window to activate
+
+    return is_window_active(window_title)
+
+
+def is_window_active(window_title):
+    """
+    Check if a window with the specified title is active.
+
+    Args:
+        window_title (str): The title of the window.
+
+    Returns:
+        bool: True if the window is active, False otherwise.
+    """
+    # Get the active application
+    active_app = NSWorkspace.sharedWorkspace().frontmostApplication()
+    active_app_name = active_app.localizedName()
+
+    # Get the list of on-screen windows
+    options = Quartz.kCGWindowListOptionOnScreenOnly
+    window_list = Quartz.CGWindowListCopyWindowInfo(options, Quartz.kCGNullWindowID)
+
+    for window in window_list:
+        if (
+            window.get("kCGWindowName", "") == window_title
+            and window.get("kCGWindowOwnerName", "") == active_app_name
+        ):
+            return True
+    return False
 
 
 def getAllAppsWindowsTitles():
@@ -142,7 +176,7 @@ def getAllAppsWindowsTitles():
     return apps_list
 
 
-def getAllTitles():
+def getAllTitles() -> list[str]:
     """Retrieves a list of all window titles from all running applications on current screen.
 
     Returns
@@ -165,44 +199,6 @@ def getAllAppsNames():
     """
 
     return list(getAllAppsWindowsTitles().keys())
-
-
-# depricated
-def _getWindowRegion(app_name: str):
-    APPLESCRIPT = f"""
-    tell application "{app_name}" to get the bounds of window 1
-    """
-    response = str(subprocess.run(["osascript", "-e", APPLESCRIPT], capture_output=True).stdout)
-    if response == "b''":
-        error_text = f"Couldn't find '{app_name}' window, current response: {response}"
-        log.critical(error_text)
-        raise OSError(error_text)
-    response = [int(i) for i in re.sub(r"[^0-9,]", "", response).split(",")]
-    region = [response[0], response[1], response[2] - 1, response[3] - 1]
-    return region
-
-
-# depricated
-def _minimizeWindow(app_name: str):
-    APPLESCRIPT = f"""
-    tell application "{app_name}" 
-        set miniaturized of window 1 to true
-    end tell
-    """
-    print(subprocess.run(["osascript", "-e", APPLESCRIPT], capture_output=True))
-
-
-# depricated
-def _unminimizeWindow(app_name: str):
-    # TODO: doesn't work
-    APPLESCRIPT = f"""
-    tell application "{app_name}"
-        activate
-        delay 1
-        end tell
-    tell application "System Events" to set visible of process "{app_name}" to true
-    """
-    print(subprocess.run(["osascript", "-e", APPLESCRIPT], capture_output=True))
 
 
 def is_hidpi_enabled() -> bool:
