@@ -1,14 +1,17 @@
 import os
 import random
 import shutil
-import time
 import string
+import time
 
 import pytest
 import soundfile as sf
 
-from src.pysikuli import _utils as utils, config
 import src.pysikuli as sik
+from src.pysikuli import _utils as utils
+from src.pysikuli import config
+
+DIVIDER = 1.1 if config.UNIX else 1.2 if config.OSX else 2
 
 
 def getSoundDuration(file_path: str):
@@ -89,6 +92,7 @@ def getLocationSoundOFFDuration():
 @pytest.fixture()
 def getRegionSoundOFFDuration(testMoveOffset):
     config.SOUND_ON = False
+    time.sleep(0.0001)
 
     start_time = time.time()
     utils._getRegion(utils._REG_FORMAT, config.MIN_SLEEP_TIME, testMoveOffset)
@@ -154,7 +158,14 @@ class TestUtils:
         start_time = time.time()
         utils.playSound(sound)
         stop_time = time.time() - start_time
-        assert round(stop_time / 1.1, 1) <= round(duration, 1)
+
+        # add divider to even out processing time
+        if config.UNIX:
+            divider = 1.1
+        elif config.OSX:
+            divider = 1.2
+
+        assert round(stop_time / divider, 1) <= round(duration, 1)
 
     @pytest.mark.parametrize(
         "sound",
@@ -183,7 +194,7 @@ def cleanupObj():
 imgs = [
     "pics/test.png",
     "/home/work/pics/test.png",
-    "fasdfas/fasdf/test.png",
+    "test-test/test/test.png",
     "pics/test.tiff",
     "pics/test.jmp",
     "pics/test.test",
@@ -237,9 +248,7 @@ def create_test_pics_folder(get_random_num):
 
     ext = random.choice
     for _ in range(get_random_num):
-        with open(
-            f"test_pics/{random_str()}.{ext(sik._config._SUPPORTED_PIC_FORMATS)}", "w"
-        ):
+        with open(f"test_pics/{random_str()}.{ext(sik._config._SUPPORTED_PIC_FORMATS)}", "w"):
             pass
         sik.sleep(0.02)
 
@@ -270,7 +279,7 @@ class TestCleanup:
         [
             ("pics", imgs[0]),
             ("/home/work/pics", imgs[1]),
-            ("fasdfas/fasdf", imgs[2]),
+            ("test-test/test", imgs[2]),
         ],
     )
     def test_picParse_prefix(self, prefix, expected):

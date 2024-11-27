@@ -209,9 +209,7 @@ class TestConfig:
         "setAttribute, expected",
         [
             pytest.param((["OK_TEXT", "test"],), ["OK_TEXT", "test"], id="OK_TEXT"),
-            pytest.param(
-                (["CANCEL_TEXT", "test"],), ["CANCEL_TEXT", "test"], id="CANCEL_TEXT"
-            ),
+            pytest.param((["CANCEL_TEXT", "test"],), ["CANCEL_TEXT", "test"], id="CANCEL_TEXT"),
             pytest.param(
                 (["ROOT_WINDOW_POSITION", [0, 0]],),
                 ["rootWindowPosition", "+0+0"],
@@ -255,9 +253,7 @@ class TestConfig:
     @pytest.mark.parametrize(
         "setAttribute, expected",
         [
-            pytest.param(
-                (["MIN_PRECISION", 9],), ["MIN_PRECISION", 9], id="MIN_PRECISION"
-            ),
+            pytest.param((["MIN_PRECISION", 9],), ["MIN_PRECISION", 9], id="MIN_PRECISION"),
             pytest.param((["GRAYSCALE", 9],), ["GRAYSCALE", 9], id="GRAYSCALE"),
             pytest.param(
                 (["IGNORE_LIST_FOR_CLEANUP_PICS", 9],),
@@ -269,18 +265,14 @@ class TestConfig:
                 ["PERCENT_IMAGE_DOWNSIZING", 9],
                 id="PERCENT_IMAGE_DOWNSIZING",
             ),
-            pytest.param(
-                (["MAX_SEARCH_TIME", 9],), ["MAX_SEARCH_TIME", 9], id="MAX_SEARCH_TIME"
-            ),
+            pytest.param((["MAX_SEARCH_TIME", 9],), ["MAX_SEARCH_TIME", 9], id="MAX_SEARCH_TIME"),
             pytest.param((["TIME_STEP", 9],), ["TIME_STEP", 9], id="TIME_STEP"),
             pytest.param(
                 (["WINDOW_WAITING_CONFIRMATION", 9],),
                 ["WINDOW_WAITING_CONFIRMATION", 9],
                 id="WINDOW_WAITING_CONFIRMATION",
             ),
-            pytest.param(
-                (["MONITOR_REGION", 9],), ["MONITOR_REGION", 9], id="MONITOR_REGION"
-            ),
+            pytest.param((["MONITOR_REGION", 9],), ["MONITOR_REGION", 9], id="MONITOR_REGION"),
             pytest.param(
                 (["MONITOR_RESOLUTION", 9],),
                 ["MONITOR_RESOLUTION", 9],
@@ -312,9 +304,7 @@ class TestConfig:
                 ["SOUND_BLEEP_PATH", 9],
                 id="SOUND_BLEEP_PATH",
             ),
-            pytest.param(
-                (["DEBUG_SETTINGS", 9],), ["DEBUG_SETTINGS", 9], id="DEBUG_SETTINGS"
-            ),
+            pytest.param((["DEBUG_SETTINGS", 9],), ["DEBUG_SETTINGS", 9], id="DEBUG_SETTINGS"),
         ],
         indirect=["setAttribute"],
     )

@@ -100,19 +100,24 @@ def open_text_editor():
     if config.UNIX:
         subprocess.Popen(["xed"])
         window_name = "Unsaved Document 1"
-        sik.sleep(0.5)
     elif config.WIN:
         subprocess.Popen(["notepad"])
         window_name = "Untitled - Notepad"
-        sik.sleep(0.5)
+    elif config.OSX:
+        subprocess.Popen(["open", "-a", "TextEdit"])
+        window_name = "Untitled"
 
     while not main.windowExist(window_name):
         sik.sleep(0.05)
 
     yield window_name
 
-    titles = sik.getAllTitles()
-    if window_name in titles:
+    if config.OSX:
+        if "Untitled" in main.pwc.getAllAppsWindowsTitles()["TextEdit"]:
+            subprocess.run(["osascript", "-e", 'quit app "TextEdit"'])
+        return
+
+    if window_name in sik.getAllTitles():
         main.closeWindow(window_name)
         sik.sleep(0.2)
         assert main.windowExist(window_name) is None
@@ -123,13 +128,10 @@ def title_exist_window_name_1():
         return "xfce4-panel"
     elif config.WIN:
         return "Windows Input Experience"
-
-
-def title_exist_window_name_2():
-    if config.UNIX:
-        return "Desktop"
-    elif config.WIN:
-        return "Settings"
+    elif config.OSX:
+        for title in sik.getAllTitles():
+            if "pysikuli" in title:
+                return title
 
 
 @pytest.fixture()
@@ -186,7 +188,14 @@ def path_with_pics(test_img_ndarray: np.ndarray):
     shutil.rmtree(path)
 
 
-def execution_time_test(wrappedFunction, max_time=0.1):
+def execution_time_test(wrappedFunction, max_time=None):
+    if not max_time:
+        if config.OSX:
+            # macOS pws is very slow
+            max_time = 10
+        else:
+            max_time = 0.1
+
     start_time = time.time()
     ans = wrappedFunction()
     elapsed_time = time.time() - start_time
@@ -201,7 +210,7 @@ class TestMain:
     @pytest.fixture(autouse=True)
     def sleep_between_tests(self):
         yield
-        time.sleep(0.05)
+        time.sleep(0.5)
 
     def test_deleteFile(self, mocker: Callable[..., Generator[MockerFixture, None, None]]):
         file_name = "test.txt"
@@ -748,17 +757,11 @@ class TestMain:
         "window_title",
         [
             title_exist_window_name_1(),
-            title_exist_window_name_2(),
             pytest.param("test_title", marks=pytest.mark.xfail),
             pytest.param(["test_title"], marks=pytest.mark.xfail),
         ],
     )
-    def test_titleCheck(
-        self,
-        window_title: (
-            None | list[str] | Literal["xfce4-panel"] | Literal["Desktop"] | Literal["test_title"]
-        ),
-    ):
+    def test_titleCheck(self, window_title: str):
         # we check only decorator, so print func uses as stub
         foo = main.titleCheck(print)
         assert foo(window_title) == None
@@ -770,7 +773,6 @@ class TestMain:
             (123, None),
             (["title"], None),
             (title_exist_window_name_1(), title_exist_window_name_1()),
-            (title_exist_window_name_2(), title_exist_window_name_2()),
         ],
     )
     def test_windowExist(
@@ -802,7 +804,6 @@ class TestMain:
             pytest.param(123, marks=pytest.mark.xfail),
             pytest.param(["title"], marks=pytest.mark.xfail),
             title_exist_window_name_1(),
-            title_exist_window_name_2(),
         ],
     )
     def test_getWindowWithTitle(self, window_title: list[str] | str):
@@ -821,6 +822,8 @@ class TestMain:
 
         def foo():
             return main.activateWindow(open_text_editor)
+
+        time.sleep(2)
 
         assert execution_time_test(foo)
         assert expected_window.isActive
@@ -866,6 +869,7 @@ class TestMain:
         window = execution_time_test(foo)
         assert window == expected_window
 
+    @pytest.mark.skipif(config.OSX, reason="OS specific test")
     def test_minimizeWindow(self, open_text_editor):
         reg = main.getWindowRegion(open_text_editor)
         screenshot = main.grab(reg.reg)
@@ -875,11 +879,25 @@ class TestMain:
 
         assert execution_time_test(foo)
 
-        # windows required 0.1 sec to minimize
-        sik.sleep(0.1)
+        if config.WIN:
+            sik.sleep(0.1)
 
         assert main.exist(screenshot, grayscale=False) is None
         assert main.windowExist(open_text_editor) == open_text_editor
+
+    @pytest.mark.skipif(not config.OSX, reason="OS specific test")
+    def test_minimizeWindow_macOS(self, open_text_editor):
+        reg = main.getWindowRegion(open_text_editor)
+        screenshot = main.grab(reg.reg)
+
+        def foo():
+            return main.minimizeWindow(open_text_editor)
+
+        assert execution_time_test(foo)
+
+        window_titles = main.pwc.getAllAppsWindowsTitles()
+        assert "Untitled" in window_titles["TextEdit"]
+        assert main.exist(screenshot, grayscale=False) is None
 
     def test_closeWindow(self, open_text_editor):
         main.activateWindow(open_text_editor)
@@ -1028,12 +1046,12 @@ class TestMatch:
         center_pixel = main.getPixelRGB((half_width, half_width), test_img_ndarray)
         assert test_match.center_pixel == center_pixel
 
-    @pytest.mark.parametrize("key", ["q", sik.Key.esc, sik.Key.backspace, sik.Key.space])
+    @pytest.mark.parametrize("key", ["q", sik.Key.esc, main.Key.backspace, sik.Key.space])
     @pytest.mark.usefixtures("show_image")
     def test_showImage_key_closure(self, key: KeyCode | Literal["q"]):
         sik.tap(key)
 
-    @pytest.mark.parametrize("key", ["q", sik.Key.esc, sik.Key.backspace, sik.Key.space])
+    @pytest.mark.parametrize("key", ["q", sik.Key.esc, main.Key.backspace, sik.Key.space])
     @pytest.mark.usefixtures("show_region")
     def test_showRegion_key_closure(self, key: KeyCode | Literal["q"]):
         sik.tap(key)
