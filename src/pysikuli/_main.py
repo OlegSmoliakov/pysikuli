@@ -45,9 +45,13 @@ class FailSafeException(PysikuliException):
 def _mouseFailSafeCheck():
     mousePos = mousePosition()
     for region in config.FAILSAFE_REGIONS:
-        if region[0] <= mousePos[0] <= region[2] and region[1] <= mousePos[1] <= region[3]:
+        if (
+            region[0] <= mousePos[0] <= region[2]
+            and region[1] <= mousePos[1] <= region[3]
+        ):
             return (
-                "pysikuli fail-safe triggered when " "moving the mouse within the fail-safe region."
+                "pysikuli fail-safe triggered when "
+                "moving the mouse within the fail-safe region."
             )
 
 
@@ -152,7 +156,9 @@ class Region(object):
         )
         if not _match:
             if rgb_diff:
-                logging.info(f"has() couldn't find the specific pixel in the region: {image}")
+                logging.info(
+                    f"has() couldn't find the specific pixel in the region: {image}"
+                )
             else:
                 logging.debug(f"has() couldn't find the image: {image}")
             return False
@@ -276,7 +282,9 @@ class Region(object):
         grayscale: bool = None,
         precision: float = None,
     ):
-        return existAny(image=image, region=self.reg, grayscale=grayscale, precision=precision)
+        return existAny(
+            image=image, region=self.reg, grayscale=grayscale, precision=precision
+        )
 
     def waitStaticRegion(
         self,
@@ -432,7 +440,9 @@ def waitWhileExist(
     precision: float = None,
     rgb_diff: float = None,
 ):
-    max_search_time = max_search_time if max_search_time is not None else config.MAX_SEARCH_TIME
+    max_search_time = (
+        max_search_time if max_search_time is not None else config.MAX_SEARCH_TIME
+    )
     time_step = time_step if time_step is not None else config.TIME_STEP
 
     start_time = time.time()
@@ -444,12 +454,14 @@ def waitWhileExist(
             precision=precision,
             rgb_diff=rgb_diff,
         )
-        if _match == None:
-            logging.info(f"waitWhileExist finished due to the pic disappearing")
+        if _match is None:
+            logging.info("waitWhileExist finished due to the pic disappearing")
             return True
         time.sleep(time_step)
 
-    logging.info(f"waitWhileExist finished due to MAX_SEARCH_TIME = {config.MAX_SEARCH_TIME} limit")
+    logging.info(
+        f"waitWhileExist finished due to MAX_SEARCH_TIME = {config.MAX_SEARCH_TIME} limit"
+    )
     return False
 
 
@@ -476,7 +488,9 @@ def find(
     Returns:
         _type_: _description_
     """
-    max_search_time = max_search_time if max_search_time is not None else config.MAX_SEARCH_TIME
+    max_search_time = (
+        max_search_time if max_search_time is not None else config.MAX_SEARCH_TIME
+    )
     time_step = time_step if time_step is not None else config.TIME_STEP
 
     start_time = time.time()
@@ -488,13 +502,15 @@ def find(
             precision=precision,
             rgb_diff=rgb_diff,
         )
-        if _match != None:
+        if _match is not None:
             return _match
         time.sleep(time_step)
     return None
 
 
-def waitStaticRegion(region, time_without_changes=0.5, max_checking_time=-1, check_interval=0.2):
+def waitStaticRegion(
+    region, time_without_changes=0.5, max_checking_time=-1, check_interval=0.2
+):
     """
     Waits for a static content in region by continuously capturing screenshots and checking for changes.
 
@@ -577,7 +593,9 @@ def _coordinateNormalization(
             raise TimeoutError(error_text)
         return _match.center_loc
     else:
-        logging.warning(f"getCoordinates: can't recognize this type of data: {loc_or_pic}")
+        logging.warning(
+            f"getCoordinates: can't recognize this type of data: {loc_or_pic}"
+        )
         return None, None
 
 
@@ -866,7 +884,9 @@ def exist(
     if max_val < precision:
         return None
 
-    max_loc_rel = tuple(int(point / config.PERCENT_IMAGE_DOWNSIZING * 100) for point in max_loc)
+    max_loc_rel = tuple(
+        int(point / config.PERCENT_IMAGE_DOWNSIZING * 100) for point in max_loc
+    )
 
     if config.HIDPI:
         max_loc_rel = (max_loc_rel[0] // 2, max_loc_rel[1] // 2)
@@ -894,15 +914,16 @@ def exist(
             region_capture, tuple_region, max_loc_abs, img_width, img_height
         )
 
-        for counting in avgRgbValues(image_capture, cropped_reg):
-            if counting > config.PERCENT_RGB_DIFFERENCE:
-                logging.debug(
-                    f"search result: {max_val} precision: {precision} img: {image} rgb_diff: {counting} "
-                )
-                return None
+        rgb_diff_result = avgRgbValues(image_capture, cropped_reg)
+        rgb_diff_result = max(rgb_diff_result)
+        if rgb_diff_result > rgb_diff:
+            logging.debug(
+                f"search result: {max_val} precision: {precision} img: {image} rgb_diff: {rgb_diff_result} "
+            )
+            return None
 
         logging.debug(
-            f"search result: {max_val} precision: {precision} img: {image} rgb_diff: {counting} "
+            f"search result: {max_val} precision: {precision} img: {image} rgb_diff: {rgb_diff_result} "
         )
         return match_class
 
@@ -958,7 +979,7 @@ def existFromFolder(path, region=None, grayscale=None, precision=None):
             precision=precision,
         )
         pos = None
-        if match != None:
+        if match is not None:
             pos = match.center_loc
         imagesPos[full_path] = pos
     return imagesPos
@@ -1223,7 +1244,6 @@ def smoothScroll(ticks=1, speed_x=0, speed_y=1):
         sleep_y = round(1 / speed_y, 2)
 
     for _ in range(ticks):
-
         s_time = time.time()
         mouse.scroll(step_x, step_y)
         exec_time = time.time() - s_time
@@ -1312,7 +1332,10 @@ def mouseSmoothMove(
 
         dist2NewPoint = vector_diff(mouse.position, (new_x, new_y))
 
-        if abs(dist2NewPoint[0]) > abs(delta_x) * 2 and abs(dist2NewPoint[1]) > abs(delta_y) * 2:
+        if (
+            abs(dist2NewPoint[0]) > abs(delta_x) * 2
+            and abs(dist2NewPoint[1]) > abs(delta_y) * 2
+        ):
             interruptions += 1
 
         if interruptions > steps * 0.5:
@@ -1320,7 +1343,10 @@ def mouseSmoothMove(
 
     dist2point = vector_diff(mouse.position, destination_loc)
 
-    if abs(dist2point[0]) <= abs(delta_x) * 2 and abs(dist2point[1]) <= abs(delta_y) * 2:
+    if (
+        abs(dist2point[0]) <= abs(delta_x) * 2
+        and abs(dist2point[1]) <= abs(delta_y) * 2
+    ):
         mouse.position = destination_loc
     else:
         raise PysikuliException("Mouse movement has been interrupted")
@@ -1432,7 +1458,9 @@ def click(
             precision=precision,
         )
 
-        logging.debug(f"click: {x, y}, clicks: {clicks} interval: {interval} button: {button}")
+        logging.debug(
+            f"click: {x, y}, clicks: {clicks} interval: {interval} button: {button}"
+        )
 
         mouseSmoothMove(destination_loc=(x, y))
 
@@ -1622,7 +1650,9 @@ def activateWindowUnderMouse():
     Returns:
         bool : "True" if window is activated
     """
-    return pwc.getTopWindowAt(*mouse.position).activate(config.WINDOW_WAITING_CONFIRMATION)
+    return pwc.getTopWindowAt(*mouse.position).activate(
+        config.WINDOW_WAITING_CONFIRMATION
+    )
 
 
 @failSafeCheck
@@ -1713,7 +1743,9 @@ def minimizeWindow(window_title: str):
 
     To get all available titles, use `pysikuli.getAllTitles()`
     """
-    return pwc.getWindowsWithTitle(window_title)[0].minimize(config.WINDOW_WAITING_CONFIRMATION)
+    return pwc.getWindowsWithTitle(window_title)[0].minimize(
+        config.WINDOW_WAITING_CONFIRMATION
+    )
 
 
 def _rootTimeoutNorm(root: tuple[int, int], timeout: float):
@@ -1838,5 +1870,5 @@ def deleteFile(file_path: os.PathLike):
     logging.debug(f"deleting {file_path}")
     try:
         send2trash(file_path)
-    except:
+    except BaseException:
         os.remove(file_path)

@@ -1,9 +1,7 @@
 import os
 import platform
 
-import pymonctl as pmc
 import pymsgbox as pmb
-
 from pynput.keyboard import Key
 from pynput.mouse import Button
 
@@ -59,7 +57,7 @@ def getDefaultFailsafeHotkey(OSX):
 
 class Config:
     """
-    Class for storing pysikuli global variables with user acces
+    Class for storing pysikuli global variables with user access
     """
 
     # TODO: Sleep value should vary with the platform. http://stackoverflow.com/q/1133857
@@ -141,7 +139,6 @@ class Config:
 
     # This parameter increases speed by about 30%, but degrades unambiguous image recognition
     GRAYSCALE = True
-    PERCENT_RGB_DIFFERENCE = 50
 
     # The value after which all search functions return positive
     MIN_PRECISION = 0.8
@@ -217,8 +214,12 @@ class Config:
 
     # Constants for utils module
     SOUND_ON = True
-    SOUND_CAPTURE_PATH = os.path.join(os.path.dirname(__file__), "tools_data/_capture.mp3")
-    SOUND_FINISH_PATH = os.path.join(os.path.dirname(__file__), "tools_data/_finish.mp3")
+    SOUND_CAPTURE_PATH = os.path.join(
+        os.path.dirname(__file__), "tools_data/_capture.mp3"
+    )
+    SOUND_FINISH_PATH = os.path.join(
+        os.path.dirname(__file__), "tools_data/_finish.mp3"
+    )
     SOUND_BLEEP_PATH = os.path.join(os.path.dirname(__file__), "tools_data/_bleep.mp3")
 
     _DEFAULT_SETTINGS = {
@@ -232,12 +233,12 @@ class Config:
         return self._DEBUG
 
     @DEBUG.setter
-    def DEBUG(self, val):
+    def DEBUG(self, val: bool):
         self._DEBUG = val
-        if val == True:
+        if val:
             for key, value in self.DEBUG_SETTINGS.items():
                 setattr(self, key, value)
-        elif val == False:
+        else:
             for key, value in self._DEFAULT_SETTINGS.items():
                 setattr(self, key, value)
 

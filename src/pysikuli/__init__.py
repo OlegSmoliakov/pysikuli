@@ -3,7 +3,7 @@ Fast cross-platform python module for desktop gui automation
 """
 
 __author__ = "Oleg Smoliakov"
-__version__ = "0.0.20"
+__version__ = "0.0.21"
 
 from time import sleep
 

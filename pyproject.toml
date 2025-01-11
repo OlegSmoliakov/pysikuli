@@ -5,7 +5,7 @@ build-backend = "poetry.core.masonry.api"
 [tool.poetry]
 authors = [ "Oleg Smoliakov <oleggsmolyakov@gmail.com>",]
 name = "pysikuli"
-version = "0.0.20"
+version = "0.0.21"
 description = "Fast cross-platform RPA tool for GUI automation"
 readme = "README.md"
 license = "LGPL-3.0-only"
